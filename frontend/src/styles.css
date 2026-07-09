@@ -459,3 +459,80 @@ a:hover {
 .badge-disabled { background: var(--bg-elevated); color: var(--text-muted); }
 .btn-danger { background: #dc2626; color: #fff; }
 .btn-danger:hover { background: #b91c1c; }
+
+/* Modal */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+}
+.modal {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+.modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    gap: 12px;
+}
+.modal-body textarea {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    background: var(--bg-elevated);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    resize: vertical;
+}
+.modal-body input[type="file"] {
+    font: inherit;
+}
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+}
+.import-decision {
+    display: grid;
+    gap: 8px;
+}
+.import-errors {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text);
+    font-size: 13px;
+}
+.import-errors code {
+    background: var(--bg-elevated);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 12px;
+}

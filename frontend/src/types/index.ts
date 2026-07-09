@@ -59,6 +59,22 @@ export interface IndexerTestResult {
     errorMessage?: string;
 }
 
+export interface ImportValidationError {
+    code: string;
+    message: string;
+}
+
+export interface ImportResponse {
+    id: string;
+    valid: boolean;
+    errors?: ImportValidationError[];
+    definition?: IndexerDefinition;
+    installed: boolean;
+    installedId?: string;
+    test?: IndexerTestResult;
+    persisted: boolean;
+}
+
 export interface SearchFilters {
     minSizeBytes?: number;
     maxSizeBytes?: number;

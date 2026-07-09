@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../services/api';
 import type { IndexerDefinition, IndexerTestResult, InstalledIndexer } from '../types';
+import { ImportDialog } from '../features/ImportDialog';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
 
@@ -27,6 +28,7 @@ export function IndexerPage(): JSX.Element {
     const [newDefId, setNewDefId] = useState<string>('');
     const [newBaseUrl, setNewBaseUrl] = useState<string>('https://');
     const [adding, setAdding] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -115,7 +117,13 @@ export function IndexerPage(): JSX.Element {
         <section className="page">
             <header className="page-header">
                 <h1>索引器</h1>
-                <p className="page-sub">从内置目录一键添加，或导入本地 YAML（Phase 5）。</p>
+                <p className="page-sub">
+                    从内置目录一键添加，或{' '}
+                    <button type="button" className="btn-link" onClick={() => setImportOpen(true)}>
+                        导入本地 YAML
+                    </button>
+                    。
+                </p>
             </header>
 
             {notice && (
@@ -206,6 +214,15 @@ export function IndexerPage(): JSX.Element {
                     </ul>
                 )}
             </div>
+            {importOpen && (
+                <ImportDialog
+                    onClose={() => setImportOpen(false)}
+                    onInstalled={() => {
+                        setNotice({ kind: 'success', text: '已导入并安装' });
+                        void refresh();
+                    }}
+                />
+            )}
         </section>
     );
 }

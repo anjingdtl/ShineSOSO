@@ -3,7 +3,7 @@
 // in dev the Vite proxy forwards /api to the Go backend on the port
 // declared in $EASYSEARCH_DATA_DIR/.port.
 
-import type { IndexerDefinition, IndexerTestResult, InstalledIndexer, SystemStatus } from '../types';
+import type { ImportResponse, IndexerDefinition, IndexerTestResult, InstalledIndexer, SystemStatus } from '../types';
 
 export class ApiError extends Error {
     constructor(
@@ -94,5 +94,13 @@ export const api = {
     },
     listCatalog(): Promise<{ items: IndexerDefinition[] }> {
         return request<{ items: IndexerDefinition[] }>('/api/v1/indexer-catalog');
+    },
+
+    importDefinition(yaml: string, filename: string, withTest = true): Promise<ImportResponse> {
+        return request<ImportResponse>('/api/v1/indexer-catalog/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ yaml, filename, test: withTest }),
+        });
     },
 };
