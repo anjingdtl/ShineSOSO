@@ -124,13 +124,23 @@ var (
 func (u *Updater) Activate(fsys fs.FS, dir string) (*UpdateReport, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return u.activateLocked(fsys, dir)
+	return u.activateLocked(fsys, dir, "cache")
+}
+
+// ActivateAsEmbedded is the boot path used by ActivateEmbedded — it
+// tags the activated state with source="embedded" so the API can
+// label it correctly.
+func (u *Updater) ActivateAsEmbedded() (*UpdateReport, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.activateLocked(builtin.FS(), "", "embedded")
 }
 
 // activateLocked is the body of Activate without the mutex acquisition.
-// Callers that already hold the mutex (e.g. ActivateEmbedded) use this
-// directly to avoid self-deadlock.
-func (u *Updater) activateLocked(fsys fs.FS, dir string) (*UpdateReport, error) {
+// Callers that already hold the mutex use this directly to avoid
+// self-deadlock. The `source` label is recorded in the active state so
+// the API and UI can tell where the manifest came from.
+func (u *Updater) activateLocked(fsys fs.FS, dir string, source string) (*UpdateReport, error) {
 	oldVersion := ""
 	if u.active != nil {
 		oldVersion = u.active.Version
@@ -189,7 +199,7 @@ func (u *Updater) activateLocked(fsys fs.FS, dir string) (*UpdateReport, error) 
 	report := &UpdateReport{
 		Before:  oldVersion,
 		After:   m.Version,
-		Source:  "cache",
+		Source:  source,
 		Changed: changed,
 		Added:   added,
 		Removed: removed,
@@ -200,7 +210,7 @@ func (u *Updater) activateLocked(fsys fs.FS, dir string) (*UpdateReport, error) 
 
 	u.active = &activeManifest{
 		Version:   m.Version,
-		Source:    "cache",
+		Source:    source,
 		Activated: u.cfg.Now().UTC(),
 		Entries:   newEntries,
 	}
@@ -228,16 +238,16 @@ func (u *Updater) activateLocked(fsys fs.FS, dir string) (*UpdateReport, error) 
 // manifest if no active state is recorded yet (idempotent on re-run).
 func (u *Updater) ActivateEmbedded() (*UpdateReport, error) {
 	u.mu.Lock()
-	defer u.mu.Unlock()
 	if u.active != nil {
+		u.mu.Unlock()
 		return &UpdateReport{
 			Before: u.active.Version,
 			After:  u.active.Version,
 			Source: u.active.Source,
 		}, ErrManifestUnchanged
 	}
-	// Inline Activate's body (the helper takes the mutex; we already hold it).
-	return u.activateLocked(builtin.FS(), ".")
+	u.mu.Unlock()
+	return u.ActivateAsEmbedded()
 }
 
 // Fetch downloads a remote manifest + every YAML it references,
@@ -307,7 +317,7 @@ func (u *Updater) Fetch(ctx context.Context) (*UpdateReport, error) {
 	}
 
 	// Activate from the now-populated cache dir.
-	return u.Activate(os.DirFS(u.cfg.CacheDir), ".")
+	return u.activateLocked(os.DirFS(u.cfg.CacheDir), "", "remote")
 }
 
 // ActiveVersion returns the currently-active manifest version + source
