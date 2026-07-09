@@ -3,6 +3,7 @@ package diagnostics
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"regexp"
 	"strings"
 )

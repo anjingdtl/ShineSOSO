@@ -36,9 +36,9 @@ func TestSanitizeLine_StripsBareInfoHash(t *testing.T) {
 }
 
 func TestSanitizeLine_StripsBase32BTIH(t *testing.T) {
-	in := `infohash=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567A fetched`
+	in := `infohash=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567 fetched`
 	out := string(SanitizeLine(in))
-	if strings.Contains(out, "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567A") {
+	if strings.Contains(out, "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567") {
 		t.Fatalf("base32 BTIH leaked: %q", out)
 	}
 }

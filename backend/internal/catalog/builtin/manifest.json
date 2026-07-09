@@ -1,19 +1,19 @@
 {
   "schema": 1,
   "version": "2026.07.1",
-  "generatedAt": "2026-07-09T08:51:12Z",
+  "generatedAt": "2026-07-09T13:03:53Z",
   "definitions": [
     {
       "id": "example-public-html",
       "version": "1.0.0",
       "file": "definitions/example-public-html.yml",
-      "sha256": "741c925bd3c4e2c4f19b2935ea07d169d83b6070345712825a80edc2f51c747a"
+      "sha256": "a77735d9e6d982b3ff871a58d73df822eac471f78a6823fd244eb46b0797a23b"
     },
     {
       "id": "example-torznab",
       "version": "1.0.0",
       "file": "definitions/example-torznab.yml",
-      "sha256": "64454645dbfd62014bf3642659fc797ac847cd04dee82f4fce97319505474f12"
+      "sha256": "919334e7a99181092d20657ba078bef02fad5d751fa978a9730a76b8ea417e46"
     }
   ]
 }

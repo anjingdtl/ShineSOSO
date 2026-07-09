@@ -345,6 +345,13 @@ func init() {
 	Default.Register(ProtocolDeclarative, declarativeFactory{})
 }
 
+// SetClientForTest installs the given client into the package-level
+// global used by declarative / torznab adapters during HTTP requests.
+// It is intended for integration tests that drive adapters directly
+// without going through the registry. Production code should construct
+// adapters with explicit *Client values via the factory Create path.
+func SetClientForTest(c *Client) { setClient(c) }
+
 // Package-scope client holder so fetch() can stay signature-free.
 // Mutated by the factory at create time; safe because factories are
 // called synchronously before the adapter enters the worker pool.
