@@ -14,7 +14,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
         sizeBytes: 8_400_000_000,
         seeders: 326,
         publishedAt: new Date().toISOString(),
-        magnetUrl: 'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567',
+        magnetUrl: 'magnet:?xt=urn:btih:0000000000000000000000000000000000000000',
         sources: [],
         ...overrides,
     };

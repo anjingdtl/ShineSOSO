@@ -154,7 +154,7 @@ const server = http.createServer((req, res) => {
                     results: [{
                         id: 'mock-r1',
                         title: 'Mock Movie ' + Date.now(),
-                        magnetUrl: 'magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12',
+                        magnetUrl: 'magnet:?xt=urn:btih:0000000000000000000000000000000000000000',
                         sizeBytes: 8_400_000_000,
                         seeders: 326,
                         publishedAt: new Date().toISOString(),
