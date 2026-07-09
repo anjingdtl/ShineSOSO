@@ -16,6 +16,7 @@ type ServerDeps struct {
     System  *SystemHandler
     Search  *SearchHandler
     Indexer *IndexerHandler
+    Import  *ImportHandler
 }
 
 // NewRouter returns a chi.Mux with /api/v1 mounted, plus a /healthz alias.
@@ -43,6 +44,10 @@ func NewRouter(deps ServerDeps) http.Handler {
             r.Delete("/indexers/{id}", deps.Indexer.Delete)
             r.Post("/indexers/{id}/test", deps.Indexer.Test)
             r.Get("/indexer-catalog", deps.Indexer.ListCatalog)
+        }
+        if deps.Import != nil {
+            r.Post("/indexer-catalog/import", deps.Import.Import)
+            r.Get("/indexer-catalog/imported", deps.Import.ListImported)
         }
     })
 

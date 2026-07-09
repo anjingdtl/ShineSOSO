@@ -70,6 +70,7 @@ func main() {
 	defer func() { _ = st.Close() }()
 
 	repo := store.NewIndexerRepo(st)
+	importedRepo := store.NewImportedDefinitionRepo(st)
 	cat := catalog.New(repo)
 	for _, d := range catalog.BuiltinDefinitions() {
 		cat.RegisterDefinition(d)
@@ -91,6 +92,12 @@ func main() {
 			Logger:     logger.Logger,
 			Catalog:    cat,
 			Repo:       repo,
+			HTTPClient: httpClient,
+		},
+		Import: &api.ImportHandler{
+			Logger:     logger.Logger,
+			Repo:       importedRepo,
+			Catalog:    cat,
 			HTTPClient: httpClient,
 		},
 	})
