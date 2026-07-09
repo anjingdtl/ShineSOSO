@@ -24,6 +24,11 @@ import (
 //go:embed signatures/*
 var fsys embed.FS
 
+// FS returns the embedded filesystem for callers that need to walk it
+// (e.g. the catalog updater when activating the bundled catalog without
+// a network fetch).
+func FS() fs.FS { return fsys }
+
 // Manifest mirrors the JSON structure on disk.
 type Manifest struct {
 	Schema      int               `json:"schema"`
