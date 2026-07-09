@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "version": "2026.07.1",
+  "generatedAt": "2026-07-09T08:51:12Z",
+  "definitions": [
+    {
+      "id": "example-public-html",
+      "version": "1.0.0",
+      "file": "definitions/example-public-html.yml",
+      "sha256": "741c925bd3c4e2c4f19b2935ea07d169d83b6070345712825a80edc2f51c747a"
+    },
+    {
+      "id": "example-torznab",
+      "version": "1.0.0",
+      "file": "definitions/example-torznab.yml",
+      "sha256": "64454645dbfd62014bf3642659fc797ac847cd04dee82f4fce97319505474f12"
+    }
+  ]
+}

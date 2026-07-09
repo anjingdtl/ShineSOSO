@@ -72,8 +72,18 @@ func main() {
 	repo := store.NewIndexerRepo(st)
 	importedRepo := store.NewImportedDefinitionRepo(st)
 	cat := catalog.New(repo)
+	// Phase 6: register embedded catalog (manifest.json + definitions/*.yml)
+	// instead of the Phase 4 hardcoded list. The hardcoded mock definitions
+	// remain available as a fallback so older demo flows keep working.
 	for _, d := range catalog.BuiltinDefinitions() {
 		cat.RegisterDefinition(d)
+	}
+	if m, err := catalog.LoadBuiltin(); err != nil {
+		logger.Warn("load builtin catalog", "err", err)
+	} else {
+		for _, d := range m {
+			cat.RegisterDefinition(d)
+		}
 	}
 	if err := cat.Refresh(); err != nil {
 		logger.Warn("catalog refresh on boot", "err", err)

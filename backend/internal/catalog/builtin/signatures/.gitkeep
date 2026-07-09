@@ -1,0 +1,2 @@
+# Reserved for future manifest signatures (spec §26.3 — "建议对 manifest
+# 进行数字签名验证"). Phase 6 ships without signing.

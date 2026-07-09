@@ -16,6 +16,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/local/easysearch/backend/internal/catalog/builtin"
 	"github.com/local/easysearch/backend/internal/model"
 )
 
@@ -99,3 +100,34 @@ var (
 	ErrDefinitionTooLarge = errors.New("definition too large")
 	ErrInvalidYAML        = errors.New("invalid yaml")
 )
+
+// LoadBuiltin loads every embedded definition (Phase 6 manifest.json +
+// definitions/*.yml) and returns them as a slice in manifest order.
+// Failures to parse or validate a single file are returned as the
+// second value; partial results are still useful for the boot path.
+func LoadBuiltin() ([]model.IndexerDefinition, []error) {
+	m, err := builtin.ReadManifest()
+	if err != nil {
+		return nil, []error{err}
+	}
+	out := make([]model.IndexerDefinition, 0, len(m.Definitions))
+	var errs []error
+	for _, e := range m.Definitions {
+		raw, err := builtin.DefinitionYAML(e.ID)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("read %s: %w", e.ID, err))
+			continue
+		}
+		def, err := LoadDefinition(raw, e.File)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("parse %s: %w", e.ID, err))
+			continue
+		}
+		if err := Validate(def); err != nil {
+			errs = append(errs, fmt.Errorf("validate %s: %w", e.ID, err))
+			continue
+		}
+		out = append(out, def)
+	}
+	return out, errs
+}
