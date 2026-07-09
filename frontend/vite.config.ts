@@ -41,9 +41,9 @@ export default defineConfig(({ mode }) => {
         },
         build: {
             // Build directly into the Go server's web/ embed directory so
-            // `go:embed` picks it up without a copy step. The scripts/build.ps1
-            // and dev workflow both assume this layout.
-            outDir: '../backend/web',
+            // `go:embed all:web` picks it up without a copy step. The path
+            // is relative to the frontend/ working directory.
+            outDir: '../backend/internal/webembed/web',
             emptyOutDir: true,
             sourcemap: true,
             target: 'es2022',

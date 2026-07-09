@@ -5,19 +5,20 @@ import (
     "net/http"
 
     "github.com/go-chi/chi/v5"
+
+    "github.com/local/easysearch/backend/internal/webembed"
 )
 
 // ServerDeps bundles the dependencies a Router needs. Phase 1 only wires
 // SystemHandler; later phases add indexerHandler, searchHandler, etc.
 type ServerDeps struct {
-    Logger        *slog.Logger
-    System        *SystemHandler
+    Logger *slog.Logger
+    System *SystemHandler
     // Future: Indexer *IndexerHandler, Search *SearchHandler, Catalog *CatalogHandler
 }
 
 // NewRouter returns a chi.Mux with /api/v1 mounted, plus a /healthz alias.
-// In dev mode the router also answers CORS preflight from any origin (Phase
-// 1: not enabled; the Vite dev proxy handles same-origin).
+// Non-API requests fall through to the embedded frontend (SPA + assets).
 func NewRouter(deps ServerDeps) http.Handler {
     r := chi.NewRouter()
 
@@ -29,6 +30,11 @@ func NewRouter(deps ServerDeps) http.Handler {
     r.Route("/api/v1", func(r chi.Router) {
         r.Get("/system/status", deps.System.GetStatus)
     })
+
+    // Static + SPA fallback. chi routes /api/v1/... explicitly above;
+    // everything else (including unknown /api/v1/... paths) falls through
+    // to NotFound which serves the embedded SPA shell.
+    r.NotFound(webembed.Handler(deps.Logger).ServeHTTP)
 
     return r
 }

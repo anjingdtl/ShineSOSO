@@ -5,6 +5,7 @@ import (
     "log/slog"
     "net/http"
     "net/http/httptest"
+    "strings"
     "testing"
     "time"
 )
@@ -45,7 +46,21 @@ func TestRouterStatus(t *testing.T) {
 func TestRouterUnknownRoute(t *testing.T) {
     rr := httptest.NewRecorder()
     newTestRouter().ServeHTTP(rr, httptest.NewRequest("GET", "/api/v1/unknown", nil))
-    if rr.Code != 404 {
-        t.Fatalf("status want 404 got %d", rr.Code)
+    // /api/v1/unknown is unknown to the API; chi falls through to the
+    // catch-all webembed handler which serves the SPA shell. The router
+    // returns 200 + the embedded index.html in that case.
+    if rr.Code != 200 {
+        t.Fatalf("status want 200 (SPA fallback) got %d", rr.Code)
+    }
+}
+
+func TestRouterServesSpaShell(t *testing.T) {
+    rr := httptest.NewRecorder()
+    newTestRouter().ServeHTTP(rr, httptest.NewRequest("GET", "/indexers", nil))
+    if rr.Code != 200 {
+        t.Fatalf("status want 200 got %d", rr.Code)
+    }
+    if ct := rr.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+        t.Fatalf("SPA shell should be text/html, got %q", ct)
     }
 }
