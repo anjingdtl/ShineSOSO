@@ -1,0 +1,61 @@
+schema: 1
+id: example-torznab
+name: Example Torznab Stub
+version: 1.0.0
+description: Torznab fixture — runtime support lands in Phase 6. The YAML itself validates against §13.8 today.
+language: zh-CN
+type: public
+protocol: torznab
+
+links:
+  - https://example.com/
+
+categories:
+  movie:
+    - "2000"
+
+search:
+  method: GET
+  path: /api
+  query:
+    t: "search"
+    q: "{{ .Query.Keyword }}"
+    cat: "{{ .Query.CategoryID }}"
+  headers:
+    Accept: application/rss+xml
+  timeoutSeconds: 15
+
+response:
+  format: torznab
+  rows:
+    selector: "item"
+  fields:
+    title:
+      selector: "title"
+      value: text
+      required: true
+    detail_url:
+      selector: "link"
+      value: text
+      resolveUrl: true
+    magnet_url:
+      selector: "magneturl"
+      value: text
+    size:
+      selector: "size"
+      value: text
+      filters:
+        - trim
+        - parse_int
+    seeders:
+      selector: "attr.seeders"
+      value: text
+      filters:
+        - trim
+        - parse_int
+    published_at:
+      selector: "pubDate"
+      value: text
+      filters:
+        - trim
+        - parse_date

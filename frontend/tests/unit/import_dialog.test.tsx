@@ -3,8 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ImportDialog } from '../../src/features/ImportDialog';
 
-function mockFetchOnce(body: unknown, status = 200): ReturnType<typeof vi.fn> {
-    return vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+function mockFetchOnce(body: unknown, status = 200): void {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         ok: status >= 200 && status < 300,
         status,
         statusText: 'OK',

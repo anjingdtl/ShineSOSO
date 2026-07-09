@@ -1,0 +1,63 @@
+schema: 1
+id: example-public-html
+name: Example Public (HTML)
+version: 1.0.0
+description: Public HTML fixture shipped with EasySearch — used by docs and tests.
+language: zh-CN
+type: public
+protocol: declarative
+
+links:
+  - https://example.com/
+
+categories:
+  movie:
+    - "1"
+
+search:
+  method: GET
+  path: /search
+  query:
+    q: "{{ .Query.Keyword }}"
+  headers:
+    Accept: text/html
+  timeoutSeconds: 12
+
+response:
+  format: html
+  rows:
+    selector: "li.result"
+  fields:
+    title:
+      selector: "a.title"
+      value: text
+      required: true
+    detail_url:
+      selector: "a.title"
+      value: attr
+      attribute: href
+      resolveUrl: true
+    size:
+      selector: "span.size"
+      value: text
+      filters:
+        - trim
+        - parse_size
+    seeders:
+      selector: "span.seeders"
+      value: text
+      filters:
+        - trim
+        - parse_int
+    published_at:
+      selector: "span.date"
+      value: text
+      filters:
+        - trim
+        - parse_date
+      dateLayouts:
+        - "2006-01-02 15:04"
+    magnet_url:
+      selector: "a[href^='magnet:']"
+      value: attr
+      attribute: href
