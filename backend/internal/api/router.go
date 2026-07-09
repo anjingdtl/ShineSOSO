@@ -14,7 +14,8 @@ import (
 type ServerDeps struct {
     Logger *slog.Logger
     System *SystemHandler
-    // Future: Indexer *IndexerHandler, Search *SearchHandler, Catalog *CatalogHandler
+    Search *SearchHandler
+    // Future: Indexer *IndexerHandler, Catalog *CatalogHandler
 }
 
 // NewRouter returns a chi.Mux with /api/v1 mounted, plus a /healthz alias.
@@ -29,6 +30,11 @@ func NewRouter(deps ServerDeps) http.Handler {
 
     r.Route("/api/v1", func(r chi.Router) {
         r.Get("/system/status", deps.System.GetStatus)
+        if deps.Search != nil {
+            r.Post("/search/sessions", deps.Search.CreateSession)
+            r.Get("/search/sessions/{sessionId}/events", deps.Search.StreamEvents)
+            r.Post("/search/sessions/{sessionId}/cancel", deps.Search.CancelSession)
+        }
     })
 
     // Static + SPA fallback. chi routes /api/v1/... explicitly above;

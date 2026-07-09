@@ -64,6 +64,7 @@ func main() {
             Version:   version,
             Logger:    logger.Logger,
         },
+        Search: api.NewSearchHandler(logger.Logger),
     })
 
     addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.ListenPort)

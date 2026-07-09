@@ -6,4 +6,7 @@ require gopkg.in/natefinch/lumberjack.v2 v2.2.1
 
 require github.com/go-chi/chi/v5 v5.3.1
 
-require golang.org/x/text v0.21.0 // indirect
+require (
+	github.com/google/uuid v1.6.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+)

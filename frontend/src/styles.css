@@ -144,3 +144,211 @@ a:hover {
     color: #ef4444;
     border-color: #ef4444;
 }
+
+/* --- Search bar --- */
+
+.search-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.search-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 240px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+}
+
+.search-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.search-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+}
+
+.search-filter select {
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font: inherit;
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--bg-elevated);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.btn-link {
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    padding: 8px 8px;
+}
+
+/* --- Search status --- */
+
+.search-status {
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+}
+
+.search-status-summary {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.search-status-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+}
+
+.badge-success { color: #16a34a; border-color: #16a34a; }
+.badge-running { color: var(--accent); border-color: var(--accent); }
+.badge-empty   { color: var(--text-muted); }
+.badge-timeout { color: #f59e0b; border-color: #f59e0b; }
+.badge-error   { color: #ef4444; border-color: #ef4444; }
+
+.search-status-totals {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Empty / placeholder states --- */
+
+.empty-state-block {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+/* --- Result list / card --- */
+
+.result-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.result-card {
+    padding: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.result-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.result-card-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.result-card-kind {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.kind-magnet { color: #a855f7; border-color: #a855f7; }
+.kind-torrent { color: #3b82f6; border-color: #3b82f6; }
+.kind-direct { color: #16a34a; border-color: #16a34a; }
+.kind-detail { color: var(--text-muted); }
+
+.result-card-meta {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.result-card-source {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+.result-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.result-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 40px 0;
+}
