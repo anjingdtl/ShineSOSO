@@ -311,3 +311,75 @@ func TestUpdater_Fetch_rejectsDefinitionValidationFailure(t *testing.T) {
 
 // Use model to keep the import line alive in case the file grows.
 var _ = model.InstalledIndexer{}
+
+// TestUpdater_Activate_callsOnDefinitionActivatedHook verifies the
+// version-bump hook fires once per activated definition with the new
+// version, and that user-level state (enable / base_url) survives the
+// update — spec §26.4: "升级不得覆盖用户启用状态和自定义 Base URL".
+func TestUpdater_Activate_callsOnDefinitionActivatedHook(t *testing.T) {
+	repo := newTestRepo(t)
+	cat := catalog.New(repo)
+
+	// Pre-install an indexer with enabled=true + custom base_url.
+	customBase := "https://user-chosen.example.com/"
+	installed := model.InstalledIndexer{
+		ID:                "user-1",
+		DefinitionID:      "alpha",
+		Name:              "User Alpha",
+		Enabled:           true,
+		BaseURL:           customBase,
+		DefinitionVersion: "1.0.0",
+		Status:            "healthy",
+		CreatedAt:         time.Now().UTC(),
+		UpdatedAt:         time.Now().UTC(),
+	}
+	if err := repo.Create(installed); err != nil {
+		t.Fatalf("seed install: %v", err)
+	}
+	if err := cat.Refresh(); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+
+	// Build a manifest with alpha at v1.0.1.
+	dir := t.TempDir()
+	rawAlpha := []byte("schema: 1\nid: alpha\nname: Alpha\nversion: 1.0.1\ntype: public\nprotocol: declarative\nlinks: [\"https://example.com/\"]\nsearch: {method: GET, path: /, query: {}}\nresponse: {format: html, rows: {selector: li}, fields: {title: {selector: a, value: text, required: true}}}\n")
+	if err := os.MkdirAll(filepath.Join(dir, "definitions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "definitions", "alpha.yml"), rawAlpha, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, dir, []map[string]string{
+		{"id": "alpha", "version": "1.0.1", "file": "definitions/alpha.yml", "sha256": sha256Hex(rawAlpha)},
+	}, "v2")
+
+	called := []struct{ id, version string }{}
+	u := catalog.NewUpdater(cat, catalog.UpdaterConfig{
+		OnDefinitionActivated: func(id, v string) error {
+			called = append(called, struct{ id, version string }{id, v})
+			_, err := repo.BumpDefinitionVersion(id, v)
+			return err
+		},
+	})
+	if _, err := u.Activate(os.DirFS(dir), "."); err != nil {
+		t.Fatalf("Activate: %v", err)
+	}
+	if len(called) != 1 || called[0].id != "alpha" || called[0].version != "1.0.1" {
+		t.Errorf("hook called %v", called)
+	}
+
+	// Verify the installed row was bumped but enable/base_url preserved.
+	got, err := repo.Get("user-1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.DefinitionVersion != "1.0.1" {
+		t.Errorf("definition_version=%q", got.DefinitionVersion)
+	}
+	if !got.Enabled {
+		t.Errorf("enable state lost: %v", got.Enabled)
+	}
+	if got.BaseURL != customBase {
+		t.Errorf("base_url lost: %q", got.BaseURL)
+	}
+}

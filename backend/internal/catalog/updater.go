@@ -47,6 +47,10 @@ type UpdaterConfig struct {
 	CacheDir    string        // where to write downloaded manifest + YAML
 	Logger      *slog.Logger
 	Now         func() time.Time // injectable clock for tests
+	// OnDefinitionActivated, when non-nil, is called once per (definitionID,
+	// newVersion) pair right after a new manifest is activated. Use it to
+	// bump definition_version on installed_indexers rows.
+	OnDefinitionActivated func(definitionID, newVersion string) error
 }
 
 // Updater fetches, verifies, and activates catalog updates.
@@ -200,6 +204,23 @@ func (u *Updater) activateLocked(fsys fs.FS, dir string) (*UpdateReport, error) 
 		Activated: u.cfg.Now().UTC(),
 		Entries:   newEntries,
 	}
+
+	// Fire the version-bump hook for every activated definition so the
+	// installed_indexers table stays in sync with the catalog. Failures
+	// here don't roll back the activation — the version bump is a
+	// bookkeeping update and we'll retry on the next update.
+	if u.cfg.OnDefinitionActivated != nil {
+		for _, e := range newEntries {
+			if err := u.cfg.OnDefinitionActivated(e.ID, e.Version); err != nil {
+				u.cfg.Logger.Warn("bump definition_version failed",
+					"definition_id", e.ID,
+					"new_version", e.Version,
+					"err", err,
+				)
+			}
+		}
+	}
+
 	return report, nil
 }
 

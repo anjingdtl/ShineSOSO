@@ -132,6 +132,26 @@ func (r *IndexerRepo) Delete(id string) error {
 	return nil
 }
 
+// BumpDefinitionVersion updates definition_version + updated_at for every
+// installed indexer whose DefinitionID matches. Used by the catalog
+// updater (Phase 6) after activating a new manifest; user enable state,
+// base URL, and health snapshots are preserved.
+func (r *IndexerRepo) BumpDefinitionVersion(definitionID, newVersion string) (int, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := r.s.DB.ExecContext(context.Background(), `
+		UPDATE installed_indexers
+		SET definition_version=?, updated_at=?
+		WHERE definition_id=?
+	`,
+		newVersion, now, definitionID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
 // SetStatus updates health-related fields after a health check.
 func (r *IndexerRepo) SetStatus(id, status string, checkedAt *time.Time, lastErr *string, responseTimeMs int64) error {
 	var lastErrVal any

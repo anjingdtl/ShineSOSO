@@ -96,6 +96,10 @@ func main() {
 		ManifestURL: cfg.CatalogManifestURL,
 		CacheDir:    filepath.Join(cfg.DataDir, "catalog-cache"),
 		Logger:      logger.Logger,
+		OnDefinitionActivated: func(definitionID, newVersion string) error {
+			_, err := repo.BumpDefinitionVersion(definitionID, newVersion)
+			return err
+		},
 	})
 	if _, err := updater.ActivateEmbedded(); err != nil {
 		logger.Warn("activate embedded catalog", "err", err)
