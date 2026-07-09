@@ -17,6 +17,7 @@ frontend/tsconfig.tsbuildinfo
 backend/internal/webembed/web/
 !backend/internal/webembed/web/index.html
 backend/internal/webembed/web/assets/
+dist/
 
 # User data
 data/
