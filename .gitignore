@@ -1,0 +1,35 @@
+# Go
+backend/easysearch
+backend/*.exe
+backend/coverage.out
+backend/coverage.html
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Build artifacts
+backend/web/
+
+# User data
+data/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.swp
+*.tmp
+
+# Test outputs
+backend/test-backend.log
+backend/test-backend.err
+
+# Env
+.env
+.env.local
