@@ -23,7 +23,8 @@ var (
 
 // DefaultValidator is the production policy: HTTPS only, no private IPs.
 type DefaultValidator struct {
-    AllowHTTP bool // when true, http:// is permitted (for built-in indexers that opt in)
+    AllowHTTP     bool // when true, http:// is permitted (for built-in indexers that opt in)
+    AllowLoopback bool // tests-only: lets httptest loopback servers through
 }
 
 // ValidateURL checks the URL's scheme and that its host is not a
@@ -76,7 +77,7 @@ func (v DefaultValidator) validateHostLiteral(host string) error {
     }
     // If host is a literal IP, validate it directly.
     if ip := net.ParseIP(host); ip != nil {
-        if isBlockedIP(ip) {
+        if isBlockedIP(ip, v.AllowLoopback) {
             return fmt.Errorf("%w: %s", ErrPrivateHost, host)
         }
         return nil
@@ -90,7 +91,7 @@ func (v DefaultValidator) validateHostLiteral(host string) error {
         return fmt.Errorf("%w: no addresses for %s", ErrPrivateHost, host)
     }
     for _, ip := range ips {
-        if isBlockedIP(ip) {
+        if isBlockedIP(ip, v.AllowLoopback) {
             return fmt.Errorf("%w: %s resolves to %s", ErrPrivateHost, host, ip)
         }
     }
@@ -98,11 +99,21 @@ func (v DefaultValidator) validateHostLiteral(host string) error {
 }
 
 // isBlockedIP returns true for any address that must not be dialed by
-// indexer clients (spec §21.2).
-func isBlockedIP(ip net.IP) bool {
-    if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-        ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
-        return true
+// indexer clients (spec §21.2). When allowLoopback is true, loopback
+// addresses (127.0.0.0/8, ::1) pass through — used only by tests.
+func isBlockedIP(ip net.IP, allowLoopback bool) bool {
+    if !allowLoopback {
+        if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+            ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+            return true
+        }
+    } else {
+        // Still block link-local + multicast + unspecified even in tests;
+        // only loopback is opt-in.
+        if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+            ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+            return true
+        }
     }
     if ip.IsPrivate() {
         return true
@@ -120,6 +131,9 @@ func isBlockedIP(ip net.IP) bool {
         case v4[0] == 169 && v4[1] == 254:
             return true
         case v4[0] == 127:
+            if allowLoopback {
+                return false
+            }
             return true
         case v4[0] == 0:
             return true
