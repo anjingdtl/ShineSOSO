@@ -1,0 +1,120 @@
+:root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-elevated: #f6f7f9;
+    --text: #1a1a1a;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-fg: #ffffff;
+    --radius: 6px;
+    --gap: 16px;
+    --max-w: 1100px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1115;
+        --bg-elevated: #181b22;
+        --text: #e5e7eb;
+        --text-muted: #9ca3af;
+        --border: #2a2f3a;
+        --accent: #60a5fa;
+        --accent-fg: #0b1220;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body, #root {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+        'Microsoft YaHei', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 20px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+}
+
+.app-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text);
+}
+
+.app-nav {
+    display: flex;
+    gap: 16px;
+}
+
+.app-nav a {
+    color: var(--text-muted);
+}
+
+.app-nav a.active,
+.app-nav a:hover {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.app-main {
+    flex: 1;
+    padding: 24px 20px;
+    max-width: var(--max-w);
+    width: 100%;
+    margin: 0 auto;
+}
+
+.page-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.page-empty h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 12px;
+}
+
+.empty-state {
+    color: var(--text);
+    font-size: 16px;
+    margin: 8px 0;
+}
+
+.empty-hint {
+    color: var(--text-muted);
+    margin: 8px 0 24px;
+}
