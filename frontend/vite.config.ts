@@ -52,6 +52,7 @@ export default defineConfig(({ mode }) => {
             globals: true,
             environment: 'jsdom',
             setupFiles: ['./tests/setup.ts'],
+            exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
         },
         define: {
             __APP_VERSION__: JSON.stringify(env.npm_package_version ?? '0.0.0'),
