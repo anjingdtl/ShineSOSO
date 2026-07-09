@@ -81,15 +81,15 @@ func (h *SearchHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
         Sort:     normalizeSort(req.Sort),
     }
 
-    // Phase 2: a single mock indexer. Phase 4 will look this up from the DB.
-    mockAdapter := newMockAdapter()
-    job := search.IndexerJob{Adapter: mockAdapter, Name: mockAdapter.Name()}
+    // Phase 3: use the 3-mock demo fleet. Phase 4 will replace this with
+    // catalog-driven selection.
+    jobs := NewMockIndexers()
 
     o := search.NewOrchestrator(search.Config{
         PerIndexerTimeout: 15 * time.Second,
         TotalTimeout:      30 * time.Second,
-        MaxConcurrent:     1,
-    }, []search.IndexerJob{job}, h.Logger)
+        MaxConcurrent:     6,
+    }, jobs, h.Logger)
 
     s := o.NewSession(sid, q)
 

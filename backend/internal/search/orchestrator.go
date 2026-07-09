@@ -106,8 +106,9 @@ func (o *Orchestrator) Run(ctx context.Context, s *Session) {
     // Concurrency cap
     sem := make(chan struct{}, cfg.MaxConcurrent)
     var wg sync.WaitGroup
-    var rawCount, mergedCount int
-    var mu sync.Mutex
+    var rawCount int
+    var allResults []model.SearchResult
+    var resultsMu sync.Mutex
 
     for _, job := range o.jobs {
         job := job
@@ -121,11 +122,45 @@ func (o *Orchestrator) Run(ctx context.Context, s *Session) {
         go func() {
             defer wg.Done()
             defer func() { <-sem }()
-            o.runOne(octx, s, job, cfg, &rawCount, &mergedCount, &mu)
+            o.runOne(octx, s, job, cfg, &rawCount, &allResults, &resultsMu)
         }()
     }
 waitAll:
     wg.Wait()
+
+    // Apply filters, then dedup, then rank (Phase 3 aggregation).
+    filters := NewFilters()
+    deduper := NewDeduper()
+    ranker := NewRanker()
+    filtered := filters.Apply(s.Query, allResults)
+    deduped := deduper.Dedup(filtered)
+    ranker.Rank(s.Query, deduped)
+    mergedCount := len(deduped)
+
+    // Emit a final results_merged with totals so the UI can update its
+    // counters. The per-result events below are the actual data.
+    s.Events <- Event{
+        Type:      EventResultsMerged,
+        SessionID: s.ID,
+        Timestamp: time.Now(),
+        Data:      ResultsMergedData{MergedCount: mergedCount, RawCount: rawCount},
+    }
+
+    // Emit each merged result on the stream so the UI gets the final
+    // shape. We send them in one batch (split if too large) plus a
+    // final results_merged with the totals.
+    for _, r := range deduped {
+        s.Events <- Event{
+            Type:      EventIndexerResult,
+            SessionID: s.ID,
+            Timestamp: time.Now(),
+            Data: ResultBatch{
+                SessionID: s.ID,
+                IndexerID: r.IndexerID,
+                Results:   []model.SearchResult{r},
+            },
+        }
+    }
 
     // Emit session_cancelled if the parent context was cancelled.
     if octx.Err() != nil {
@@ -180,7 +215,8 @@ func (o *Orchestrator) runOne(
     s *Session,
     job IndexerJob,
     cfg Config,
-    rawCount, mergedCount *int,
+    rawCount *int,
+    allResults *[]model.SearchResult,
     mu *sync.Mutex,
 ) {
     startedAt := time.Now()
@@ -243,8 +279,7 @@ func (o *Orchestrator) runOne(
 
     mu.Lock()
     *rawCount += len(results)
-    *mergedCount += len(results) // Phase 3 will dedup here
-    raw, merged := *rawCount, *mergedCount
+    *allResults = append(*allResults, results...)
     mu.Unlock()
 
     s.Events <- Event{
@@ -257,12 +292,6 @@ func (o *Orchestrator) runOne(
             ResultCount: len(results),
             DurationMs:  time.Since(startedAt).Milliseconds(),
         },
-    }
-    s.Events <- Event{
-        Type:      EventResultsMerged,
-        SessionID: s.ID,
-        Timestamp: time.Now(),
-        Data:      ResultsMergedData{MergedCount: merged, RawCount: raw},
     }
 }
 

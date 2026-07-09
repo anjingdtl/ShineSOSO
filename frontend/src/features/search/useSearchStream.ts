@@ -89,6 +89,7 @@ export function useSearchStream(): {
             for (const ev of [
                 'session_started',
                 'indexer_started',
+                'indexer_result',
                 'indexer_completed',
                 'indexer_failed',
                 'results_merged',
@@ -180,6 +181,13 @@ function applyEvent(state: SearchState, type: string, data: Record<string, unkno
                         durationMs: Number(data.durationMs ?? 0),
                     },
                 },
+            };
+        }
+        case 'indexer_result': {
+            const incoming = (data.results as SearchResult[] | undefined) ?? [];
+            return {
+                ...state,
+                results: [...state.results, ...incoming],
             };
         }
         case 'indexer_failed': {
