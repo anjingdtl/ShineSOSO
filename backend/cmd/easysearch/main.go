@@ -15,6 +15,7 @@ import (
 
     "github.com/local/easysearch/backend/internal/api"
     "github.com/local/easysearch/backend/internal/config"
+    "github.com/local/easysearch/backend/internal/launcher"
     "github.com/local/easysearch/backend/internal/logging"
 )
 
@@ -39,6 +40,7 @@ func main() {
             cfg.OpenBrowser = false
         }
     }
+
     logPath := filepath.Join(cfg.DataDir, "logs", "easysearch.log")
     logger, err := logging.New(logging.ParseLevel(cfg.LogLevel), logPath)
     if err != nil {
@@ -71,18 +73,20 @@ func main() {
         os.Exit(1)
     }
     actualPort := listener.Addr().(*net.TCPAddr).Port
+    if _, err := launcher.WritePortFile(cfg.DataDir, actualPort); err != nil {
+        logger.Warn("write port file failed", "err", err)
+    } else {
+        logger.Info("port file written", "port", actualPort, "data_dir", cfg.DataDir)
+    }
     logger.Info("http server listening", "addr", listener.Addr().String())
 
     server := &http.Server{
         Handler:           router,
         ReadHeaderTimeout: 5 * time.Second,
-        // WriteTimeout is intentionally generous; SSE streams in Phase 2+
-        // // can hold the connection open for the full search duration.
-        WriteTimeout: 0,
-        IdleTimeout:  60 * time.Second,
+        WriteTimeout:      0, // SSE in later phases
+        IdleTimeout:       60 * time.Second,
     }
 
-    // Graceful shutdown on Ctrl+C / SIGTERM.
     ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
     defer stop()
 
@@ -94,8 +98,18 @@ func main() {
         close(errCh)
     }()
 
-    fmt.Printf("easysearch listening on http://%s (PID %d)\n", listener.Addr(), os.Getpid())
-    fmt.Printf("press Ctrl+C to stop\n")
+    url := fmt.Sprintf("http://%s", listener.Addr().String())
+    fmt.Printf("easysearch listening on %s (PID %d)\n", url, os.Getpid())
+    if cfg.OpenBrowser {
+        if err := launcher.OpenURL(url); err != nil {
+            logger.Warn("open browser failed", "err", err, "url", url)
+            fmt.Println("please open the URL above in your browser")
+        } else {
+            logger.Info("browser launched", "url", url)
+        }
+    } else {
+        fmt.Println("press Ctrl+C to stop")
+    }
 
     select {
     case <-ctx.Done():
@@ -107,6 +121,9 @@ func main() {
         }
     }
 
+    if err := launcher.RemovePortFile(cfg.DataDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+        logger.Warn("remove port file failed", "err", err)
+    }
     shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()
     if err := server.Shutdown(shutdownCtx); err != nil {
