@@ -90,6 +90,18 @@ func main() {
 	}
 	httpClient := indexer.NewClient()
 
+	// Phase 6: catalog updater — boots with embedded catalog active, can
+	// pull a remote manifest when the user hits POST /api/v1/indexer-catalog/update.
+	updater := catalog.NewUpdater(cat, catalog.UpdaterConfig{
+		ManifestURL: cfg.CatalogManifestURL,
+		CacheDir:    filepath.Join(cfg.DataDir, "catalog-cache"),
+		Logger:      logger.Logger,
+	})
+	if _, err := updater.ActivateEmbedded(); err != nil {
+		logger.Warn("activate embedded catalog", "err", err)
+	}
+	logger.Info("catalog updater ready", "manifest_url", cfg.CatalogManifestURL, "active_version", updater.ActiveVersion())
+
 	router := api.NewRouter(api.ServerDeps{
 		Logger: logger.Logger,
 		System: &api.SystemHandler{
@@ -109,6 +121,10 @@ func main() {
 			Repo:       importedRepo,
 			Catalog:    cat,
 			HTTPClient: httpClient,
+		},
+		Catalog: &api.CatalogUpdateHandler{
+			Logger:  logger.Logger,
+			Updater: updater,
 		},
 	})
 

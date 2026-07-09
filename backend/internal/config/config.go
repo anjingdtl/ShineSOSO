@@ -35,18 +35,23 @@ type Config struct {
     // DevMode enables Vite dev-server friendly behaviors: relax embed fallback,
     // allow CORS, skip auto-browser launch.
     DevMode bool
+
+    // CatalogManifestURL is the URL the catalog updater polls on demand.
+    // Empty disables online updates — the bundled embedded catalog is used.
+    CatalogManifestURL string
 }
 
 // Default returns the production config with environment overrides applied.
 // See package doc for the precedence order.
 func Default() Config {
     return Config{
-        DataDir:     resolveDataDir(),
-        BindHost:    "127.0.0.1",
-        ListenPort:  0,
-        LogLevel:    "info",
-        OpenBrowser: true,
-        DevMode:     false,
+        DataDir:           resolveDataDir(),
+        BindHost:          "127.0.0.1",
+        ListenPort:        0,
+        LogLevel:          "info",
+        OpenBrowser:       true,
+        DevMode:           false,
+        CatalogManifestURL: os.Getenv("EASYSEARCH_CATALOG_URL"),
     }
 }
 
