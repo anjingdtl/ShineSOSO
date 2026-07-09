@@ -145,9 +145,9 @@ func TestValidate_rejectsBadTemplateVar(t *testing.T) {
 func TestValidate_allowsSpecExampleVars(t *testing.T) {
 	d := goodDef()
 	d.Search.Query = map[string]string{
-		"keyword":     "{{ query.keyword }}",
-		"category_id": "{{ query.category_id }}",
-		"page":        "{{ query.page }}",
+		"keyword":     "{{ .Query.Keyword }}",
+		"category_id": "{{ .Query.CategoryID }}",
+		"page":        "{{ .Query.Page }}",
 	}
 	if err := Validate(d); err != nil {
 		t.Fatalf("allowed template should pass: %v", err)
@@ -171,11 +171,14 @@ func TestIsAllowedTemplate_handlesNoBraces(t *testing.T) {
 	if isAllowedTemplate("{{ .Exec \"ls\" }}") {
 		t.Fatalf("malicious template should fail")
 	}
-	if isAllowedTemplate("{{ query.keyword }} extra") {
-		// Template, contains nothing forbidden, should pass.
-		// (extra text after }} is fine.)
-	} else {
+	if !isAllowedTemplate("{{ .Query.Keyword }} extra") {
 		t.Fatalf("good var should pass")
+	}
+	// Bare `query.keyword` form (without dot prefix) is no longer
+	// supported; the validator must reject it because text/template
+	// interprets it as a function call.
+	if isAllowedTemplate("{{ query.keyword }}") {
+		t.Fatalf("bare query.keyword form should fail")
 	}
 }
 

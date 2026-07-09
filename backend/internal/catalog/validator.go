@@ -150,7 +150,7 @@ func AllSelectors(def model.IndexerDefinition) map[string]string {
 }
 
 // AllTemplates returns every template string (search.query values +
-// search.body) keyed by name.
+// search.body) keyed by where it came from.
 func AllTemplates(def model.IndexerDefinition) map[string]string {
 	out := map[string]string{}
 	for k, v := range def.Search.Query {
@@ -160,6 +160,16 @@ func AllTemplates(def model.IndexerDefinition) map[string]string {
 		out["body"] = def.Search.Body
 	}
 	return out
+}
+
+// AllowedTemplateVars is the exported allow-list, mirrored from
+// indexer.templateAllowed. Kept in sync manually.
+var AllowedTemplateVars = map[string]string{
+	"{{ .Query.Keyword }}":    "query.keyword",
+	"{{ .Query.Category }}":   "query.category",
+	"{{ .Query.CategoryID }}": "query.category_id",
+	"{{ .Query.Page }}":       "query.page",
+	"{{ .Indexer.BaseURL }}":  "indexer.base_url",
 }
 
 // helpers ----------------------------------------------------------------
@@ -184,16 +194,20 @@ func forbidsAny(s string, needles []string) bool {
 }
 
 // isAllowedTemplate permits only the explicit var names from §13.7.
+// Templates use Go text/template syntax: `.Query.Keyword`,
+// `.Indexer.BaseURL`. Bare `query.keyword` form is NOT supported by
+// text/template (it would be parsed as a function call) and is
+// therefore not in the allow-list.
 func isAllowedTemplate(tmpl string) bool {
 	if !strings.Contains(tmpl, "{{") {
 		return true
 	}
 	allowed := map[string]bool{
-		"query.keyword":     true,
-		"query.category":    true,
-		"query.category_id": true,
-		"query.page":        true,
-		"indexer.base_url":  true,
+		".Query.Keyword":    true,
+		".Query.Category":   true,
+		".Query.CategoryID": true,
+		".Query.Page":       true,
+		".Indexer.BaseURL":  true,
 	}
 	for i := 0; i+1 < len(tmpl); {
 		if tmpl[i] != '{' || tmpl[i+1] != '{' {
