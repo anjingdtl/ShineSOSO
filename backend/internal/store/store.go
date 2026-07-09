@@ -48,3 +48,21 @@ func (s *Store) Close() error {
 func (s *Store) QueryRow(query string, args ...any) *sql.Row {
 	return s.DB.QueryRow(query, args...)
 }
+
+// SchemaVersion returns the highest applied migration version. Returns
+// 0 if the schema_migrations table is empty or missing (which only
+// happens before migrate() has run — callers usually hit Open first).
+func (s *Store) SchemaVersion() (int, error) {
+	if s == nil || s.DB == nil {
+		return 0, fmt.Errorf("store: nil")
+	}
+	var v sql.NullInt64
+	err := s.DB.QueryRow(`SELECT MAX(version) FROM schema_migrations`).Scan(&v)
+	if err != nil {
+		return 0, fmt.Errorf("schema version: %w", err)
+	}
+	if !v.Valid {
+		return 0, nil
+	}
+	return int(v.Int64), nil
+}

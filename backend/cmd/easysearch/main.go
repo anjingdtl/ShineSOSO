@@ -130,6 +130,17 @@ func main() {
 			Logger:  logger.Logger,
 			Updater: updater,
 		},
+		Diagnostics: &api.DiagnosticsHandler{
+			StartTime: startTime,
+			Version:   version,
+			DataDir:   cfg.DataDir,
+			LogDir:    api.DefaultLogDir(cfg.DataDir),
+			DBPath:    dbPath,
+			Store:     st,
+			Repo:      repo,
+			Catalog:   updater,
+			Logger:    logger.Logger,
+		},
 	})
 
 	addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.ListenPort)

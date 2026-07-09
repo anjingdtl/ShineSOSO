@@ -215,6 +215,62 @@ func (r *IndexerRepo) ListHealthEvents(indexerID string, limit int) ([]HealthEve
 	return out, rows.Err()
 }
 
+// DiagnosticsRow is a flat row used by the diagnostics bundle.
+type DiagnosticsRow struct {
+	ID               string
+	Name             string
+	Status           string
+	Enabled          bool
+	ResponseTimeMs   int64
+	ConsecutiveFails int
+	LastErrorCode    string
+	LastErrorAt      string
+}
+
+// DiagnosticsSummary returns one row per installed indexer, augmented
+// with the most recent health event's error code (if any). Used by the
+// /system/diagnostics bundle; never includes base_url or full error
+// messages.
+func (r *IndexerRepo) DiagnosticsSummary() ([]DiagnosticsRow, error) {
+	rows, err := r.s.DB.Query(`
+		SELECT i.id, i.name, i.status, i.enabled, i.response_time_ms,
+		       i.consecutive_fails,
+		       (SELECT error_code FROM indexer_health_events h
+		         WHERE h.indexer_id = i.id
+		         ORDER BY created_at DESC LIMIT 1),
+		       (SELECT created_at FROM indexer_health_events h
+		         WHERE h.indexer_id = i.id
+		         ORDER BY created_at DESC LIMIT 1)
+		FROM installed_indexers i
+		ORDER BY i.created_at ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("diagnostics query: %w", err)
+	}
+	defer rows.Close()
+	var out []DiagnosticsRow
+	for rows.Next() {
+		var (
+			row                 DiagnosticsRow
+			enabled             int
+			respMs              sql.NullInt64
+			code, healthEventAt sql.NullString
+		)
+		if err := rows.Scan(&row.ID, &row.Name, &row.Status, &enabled, &respMs,
+			&row.ConsecutiveFails, &code, &healthEventAt); err != nil {
+			return nil, fmt.Errorf("diagnostics scan: %w", err)
+		}
+		row.Enabled = enabled == 1
+		if respMs.Valid {
+			row.ResponseTimeMs = respMs.Int64
+		}
+		row.LastErrorCode = code.String
+		row.LastErrorAt = healthEventAt.String
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 func scanIndexer(row *sql.Row) (model.InstalledIndexer, error) {
 	var (
 		idx             model.InstalledIndexer
