@@ -12,6 +12,7 @@ import (
 
     "github.com/google/uuid"
 
+    "github.com/local/easysearch/backend/internal/catalog"
     "github.com/local/easysearch/backend/internal/indexer"
     "github.com/local/easysearch/backend/internal/model"
     "github.com/local/easysearch/backend/internal/search"
@@ -20,21 +21,29 @@ import (
 // SearchHandler hosts the POST /sessions and GET /sessions/{id}/events
 // endpoints. It also serves /sessions/{id}/cancel.
 //
-// Phase 2 supports a single hard-coded mock indexer; Phase 4 wires in
-// the catalog-driven selection.
+// Phase 4 wires in the catalog-driven selection: jobs come from enabled
+// installed indexers that have a registered definition. If the catalog
+// is empty (or nil) the Phase 3 demo mocks are used so the binary still
+// works end-to-end on first run.
 type SearchHandler struct {
-    Logger *slog.Logger
+    Logger     *slog.Logger
+    Catalog    *catalog.Catalog
+    HTTPClient *indexer.Client
 
     mu       sync.Mutex
     sessions map[string]*search.Session
     cancels  map[string]context.CancelFunc
 }
 
-func NewSearchHandler(logger *slog.Logger) *SearchHandler {
+// NewSearchHandler builds a handler that uses the catalog. The catalog
+// may be nil for older tests; the search will then use demo mocks.
+func NewSearchHandler(logger *slog.Logger, cat *catalog.Catalog, client *indexer.Client) *SearchHandler {
     return &SearchHandler{
-        Logger:   logger,
-        sessions: map[string]*search.Session{},
-        cancels:  map[string]context.CancelFunc{},
+        Logger:     logger,
+        Catalog:    cat,
+        HTTPClient: client,
+        sessions:   map[string]*search.Session{},
+        cancels:    map[string]context.CancelFunc{},
     }
 }
 
@@ -81,9 +90,23 @@ func (h *SearchHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
         Sort:     normalizeSort(req.Sort),
     }
 
-    // Phase 3: use the 3-mock demo fleet. Phase 4 will replace this with
-    // catalog-driven selection.
-    jobs := NewMockIndexers()
+    // Phase 4: jobs come from the catalog. If the catalog has no enabled
+    // entries, fall back to the Phase 3 demo mocks.
+    var jobs []search.IndexerJob
+    if h.Catalog != nil {
+        built, err := h.Catalog.Jobs(h.HTTPClient)
+        if err != nil {
+            WriteError(w, h.Logger, http.StatusInternalServerError, ErrorPayload{
+                Code:    "INTERNAL_ERROR",
+                Message: "构建索引器失败: " + err.Error(),
+            })
+            return
+        }
+        jobs = built
+    }
+    if len(jobs) == 0 {
+        jobs = NewMockIndexers()
+    }
 
     o := search.NewOrchestrator(search.Config{
         PerIndexerTimeout: 15 * time.Second,

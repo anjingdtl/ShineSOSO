@@ -12,7 +12,7 @@ import (
 )
 
 func newTestSearchHandler() *SearchHandler {
-    return NewSearchHandler(slog.New(slog.NewJSONHandler(io.Discard, nil)))
+    return NewSearchHandler(slog.New(slog.NewJSONHandler(io.Discard, nil)), nil, nil)
 }
 
 func TestCreateSessionRejectsEmptyKeyword(t *testing.T) {

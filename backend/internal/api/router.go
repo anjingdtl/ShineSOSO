@@ -12,10 +12,10 @@ import (
 // ServerDeps bundles the dependencies a Router needs. Phase 1 only wires
 // SystemHandler; later phases add indexerHandler, searchHandler, etc.
 type ServerDeps struct {
-    Logger *slog.Logger
-    System *SystemHandler
-    Search *SearchHandler
-    // Future: Indexer *IndexerHandler, Catalog *CatalogHandler
+    Logger  *slog.Logger
+    System  *SystemHandler
+    Search  *SearchHandler
+    Indexer *IndexerHandler
 }
 
 // NewRouter returns a chi.Mux with /api/v1 mounted, plus a /healthz alias.
@@ -34,6 +34,15 @@ func NewRouter(deps ServerDeps) http.Handler {
             r.Post("/search/sessions", deps.Search.CreateSession)
             r.Get("/search/sessions/{sessionId}/events", deps.Search.StreamEvents)
             r.Post("/search/sessions/{sessionId}/cancel", deps.Search.CancelSession)
+        }
+        if deps.Indexer != nil {
+            r.Get("/indexers", deps.Indexer.List)
+            r.Post("/indexers", deps.Indexer.Create)
+            r.Get("/indexers/{id}", deps.Indexer.Get)
+            r.Patch("/indexers/{id}", deps.Indexer.Update)
+            r.Delete("/indexers/{id}", deps.Indexer.Delete)
+            r.Post("/indexers/{id}/test", deps.Indexer.Test)
+            r.Get("/indexer-catalog", deps.Indexer.ListCatalog)
         }
     })
 

@@ -84,7 +84,7 @@ func TestMultiIndexerAggregation(t *testing.T) {
 }
 
 func TestMultiIndexerEndToEndAPI(t *testing.T) {
-    h := NewSearchHandler(slog.New(slog.NewJSONHandler(io.Discard, nil)))
+    h := NewSearchHandler(slog.New(slog.NewJSONHandler(io.Discard, nil)), nil, nil)
 
     rr := httptest.NewRecorder()
     body := strings.NewReader(`{"keyword":"e2e","category":"all","sort":"relevance"}`)

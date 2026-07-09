@@ -1,135 +1,163 @@
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log/slog"
-    "net"
-    "net/http"
-    "os"
-    "os/signal"
-    "path/filepath"
-    "syscall"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
 
-    "github.com/local/easysearch/backend/internal/api"
-    "github.com/local/easysearch/backend/internal/config"
-    "github.com/local/easysearch/backend/internal/launcher"
-    "github.com/local/easysearch/backend/internal/logging"
+	"github.com/local/easysearch/backend/internal/api"
+	"github.com/local/easysearch/backend/internal/catalog"
+	"github.com/local/easysearch/backend/internal/config"
+	"github.com/local/easysearch/backend/internal/indexer"
+	"github.com/local/easysearch/backend/internal/launcher"
+	"github.com/local/easysearch/backend/internal/logging"
+	"github.com/local/easysearch/backend/internal/store"
 )
 
-const version = "0.1.0"
+const version = "0.4.0"
 
 func main() {
-    args := os.Args[1:]
-    if len(args) > 0 && args[0] == "--version" {
-        fmt.Println(version)
-        return
-    }
-    cfg := config.Default()
-    // Smoke / scripted runs may force a port; production uses 0 (random).
-    for i, a := range args {
-        if a == "--port" && i+1 < len(args) {
-            var p int
-            if _, err := fmt.Sscanf(args[i+1], "%d", &p); err == nil {
-                cfg.ListenPort = p
-            }
-        }
-        if a == "--no-browser" {
-            cfg.OpenBrowser = false
-        }
-    }
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--version" {
+		fmt.Println(version)
+		return
+	}
+	cfg := config.Default()
+	for i, a := range args {
+		if a == "--port" && i+1 < len(args) {
+			var p int
+			if _, err := fmt.Sscanf(args[i+1], "%d", &p); err == nil {
+				cfg.ListenPort = p
+			}
+		}
+		if a == "--no-browser" {
+			cfg.OpenBrowser = false
+		}
+	}
 
-    logPath := filepath.Join(cfg.DataDir, "logs", "easysearch.log")
-    logger, err := logging.New(logging.ParseLevel(cfg.LogLevel), logPath)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
-        os.Exit(1)
-    }
-    defer func() { _ = logger.Close() }()
-    slog.SetDefault(logger.Logger)
+	logPath := filepath.Join(cfg.DataDir, "logs", "easysearch.log")
+	logger, err := logging.New(logging.ParseLevel(cfg.LogLevel), logPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() { _ = logger.Close() }()
+	slog.SetDefault(logger.Logger)
 
-    startTime := time.Now()
-    logger.Info("easysearch boot",
-        "data_dir", cfg.DataDir,
-        "bind_host", cfg.BindHost,
-        "version", version,
-    )
+	startTime := time.Now()
+	logger.Info("easysearch boot",
+		"data_dir", cfg.DataDir,
+		"bind_host", cfg.BindHost,
+		"version", version,
+	)
 
-    router := api.NewRouter(api.ServerDeps{
-        Logger: logger.Logger,
-        System: &api.SystemHandler{
-            StartTime: startTime,
-            Version:   version,
-            Logger:    logger.Logger,
-        },
-        Search: api.NewSearchHandler(logger.Logger),
-    })
+	// Phase 4: open SQLite, build the indexer repo, populate the catalog
+	// with built-in definitions, and refresh.
+	dbPath := filepath.Join(cfg.DataDir, "easysearch.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		logger.Error("open store failed", "err", err)
+		os.Exit(1)
+	}
+	defer func() { _ = st.Close() }()
 
-    addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.ListenPort)
-    listener, err := net.Listen("tcp", addr)
-    if err != nil {
-        logger.Error("listen failed", "addr", addr, "err", err)
-        os.Exit(1)
-    }
-    actualPort := listener.Addr().(*net.TCPAddr).Port
-    if _, err := launcher.WritePortFile(cfg.DataDir, actualPort); err != nil {
-        logger.Warn("write port file failed", "err", err)
-    } else {
-        logger.Info("port file written", "port", actualPort, "data_dir", cfg.DataDir)
-    }
-    logger.Info("http server listening", "addr", listener.Addr().String())
+	repo := store.NewIndexerRepo(st)
+	cat := catalog.New(repo)
+	for _, d := range catalog.BuiltinDefinitions() {
+		cat.RegisterDefinition(d)
+	}
+	if err := cat.Refresh(); err != nil {
+		logger.Warn("catalog refresh on boot", "err", err)
+	}
+	httpClient := indexer.NewClient()
 
-    server := &http.Server{
-        Handler:           router,
-        ReadHeaderTimeout: 5 * time.Second,
-        WriteTimeout:      0, // SSE in later phases
-        IdleTimeout:       60 * time.Second,
-    }
+	router := api.NewRouter(api.ServerDeps{
+		Logger: logger.Logger,
+		System: &api.SystemHandler{
+			StartTime: startTime,
+			Version:   version,
+			Logger:    logger.Logger,
+		},
+		Search: api.NewSearchHandler(logger.Logger, cat, httpClient),
+		Indexer: &api.IndexerHandler{
+			Logger:     logger.Logger,
+			Catalog:    cat,
+			Repo:       repo,
+			HTTPClient: httpClient,
+		},
+	})
 
-    ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-    defer stop()
+	addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.ListenPort)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		logger.Error("listen failed", "addr", addr, "err", err)
+		os.Exit(1)
+	}
+	actualPort := listener.Addr().(*net.TCPAddr).Port
+	if _, err := launcher.WritePortFile(cfg.DataDir, actualPort); err != nil {
+		logger.Warn("write port file failed", "err", err)
+	} else {
+		logger.Info("port file written", "port", actualPort, "data_dir", cfg.DataDir)
+	}
+	logger.Info("http server listening", "addr", listener.Addr().String())
 
-    errCh := make(chan error, 1)
-    go func() {
-        if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-            errCh <- err
-        }
-        close(errCh)
-    }()
+	server := &http.Server{
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      0, // SSE streams must not be cut off
+		IdleTimeout:       60 * time.Second,
+	}
 
-    url := fmt.Sprintf("http://%s", listener.Addr().String())
-    fmt.Printf("easysearch listening on %s (PID %d)\n", url, os.Getpid())
-    if cfg.OpenBrowser {
-        if err := launcher.OpenURL(url); err != nil {
-            logger.Warn("open browser failed", "err", err, "url", url)
-            fmt.Println("please open the URL above in your browser")
-        } else {
-            logger.Info("browser launched", "url", url)
-        }
-    } else {
-        fmt.Println("press Ctrl+C to stop")
-    }
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-    select {
-    case <-ctx.Done():
-        logger.Info("shutdown signal received")
-    case err := <-errCh:
-        if err != nil {
-            logger.Error("server error", "err", err)
-            os.Exit(1)
-        }
-    }
+	errCh := make(chan error, 1)
+	go func() {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+		close(errCh)
+	}()
 
-    if err := launcher.RemovePortFile(cfg.DataDir); err != nil && !errors.Is(err, os.ErrNotExist) {
-        logger.Warn("remove port file failed", "err", err)
-    }
-    shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-    if err := server.Shutdown(shutdownCtx); err != nil {
-        logger.Error("graceful shutdown failed", "err", err)
-        os.Exit(1)
-    }
-    logger.Info("easysearch stopped", "port", actualPort)
+	url := fmt.Sprintf("http://%s", listener.Addr().String())
+	fmt.Printf("easysearch listening on %s (PID %d)\n", url, os.Getpid())
+	if cfg.OpenBrowser {
+		if err := launcher.OpenURL(url); err != nil {
+			logger.Warn("open browser failed", "err", err, "url", url)
+			fmt.Println("please open the URL above in your browser")
+		} else {
+			logger.Info("browser launched", "url", url)
+		}
+	} else {
+		fmt.Println("press Ctrl+C to stop")
+	}
+
+	select {
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	case err := <-errCh:
+		if err != nil {
+			logger.Error("server error", "err", err)
+			os.Exit(1)
+		}
+	}
+
+	if err := launcher.RemovePortFile(cfg.DataDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		logger.Warn("remove port file failed", "err", err)
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("graceful shutdown failed", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("easysearch stopped", "port", actualPort)
 }
