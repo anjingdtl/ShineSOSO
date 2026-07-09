@@ -1,6 +1,7 @@
-import { createBrowserRouter, Link, Outlet, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Link, NavLink, Outlet, type RouteObject } from 'react-router-dom';
 import { SearchPage } from '../pages/SearchPage';
 import { IndexerPage } from '../pages/IndexerPage';
+import { SystemStatusBar } from '../features/SystemStatusBar';
 
 function Shell(): JSX.Element {
     return (
@@ -8,9 +9,23 @@ function Shell(): JSX.Element {
             <header className="app-header">
                 <Link to="/" className="app-title">EasySearch</Link>
                 <nav className="app-nav">
-                    <Link to="/">搜索</Link>
-                    <Link to="/indexers">索引器</Link>
+                    <NavLink
+                        to="/"
+                        end
+                        className={({ isActive }) => (isActive ? 'active' : '')}
+                    >
+                        搜索
+                    </NavLink>
+                    <NavLink
+                        to="/indexers"
+                        className={({ isActive }) => (isActive ? 'active' : '')}
+                    >
+                        索引器
+                    </NavLink>
                 </nav>
+                <div className="app-status">
+                    <SystemStatusBar />
+                </div>
             </header>
             <main className="app-main">
                 <Outlet />

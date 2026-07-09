@@ -118,3 +118,29 @@ a:hover {
     color: var(--text-muted);
     margin: 8px 0 24px;
 }
+
+.app-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-pill {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+}
+
+.status-pill-loading {
+    color: var(--text-muted);
+}
+
+.status-pill-error {
+    color: #ef4444;
+    border-color: #ef4444;
+}
