@@ -3,7 +3,7 @@
 // in dev the Vite proxy forwards /api to the Go backend on the port
 // declared in $EASYSEARCH_DATA_DIR/.port.
 
-import type { SystemStatus } from '../types';
+import type { IndexerDefinition, IndexerTestResult, InstalledIndexer, SystemStatus } from '../types';
 
 export class ApiError extends Error {
     constructor(
@@ -38,11 +38,61 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         }
         throw new ApiError(res.status, code, message);
     }
+    if (res.status === 204) {
+        return undefined as unknown as T;
+    }
     return (await res.json()) as T;
+}
+
+export interface CreateIndexerRequest {
+    definitionId: string;
+    baseUrl: string;
+    enabled?: boolean;
+    testBeforeEnable?: boolean;
+}
+
+export interface UpdateIndexerRequest {
+    enabled?: boolean;
+    baseUrl?: string;
+    name?: string;
 }
 
 export const api = {
     getSystemStatus(): Promise<SystemStatus> {
         return request<SystemStatus>('/api/v1/system/status');
+    },
+
+    listIndexers(): Promise<{ items: InstalledIndexer[] }> {
+        return request<{ items: InstalledIndexer[] }>('/api/v1/indexers');
+    },
+    getIndexer(id: string): Promise<InstalledIndexer> {
+        return request<InstalledIndexer>(`/api/v1/indexers/${encodeURIComponent(id)}`);
+    },
+    createIndexer(req: CreateIndexerRequest): Promise<InstalledIndexer> {
+        return request<InstalledIndexer>('/api/v1/indexers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req),
+        });
+    },
+    updateIndexer(id: string, req: UpdateIndexerRequest): Promise<InstalledIndexer> {
+        return request<InstalledIndexer>(`/api/v1/indexers/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req),
+        });
+    },
+    deleteIndexer(id: string): Promise<void> {
+        return request<void>(`/api/v1/indexers/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+        });
+    },
+    testIndexer(id: string): Promise<IndexerTestResult> {
+        return request<IndexerTestResult>(`/api/v1/indexers/${encodeURIComponent(id)}/test`, {
+            method: 'POST',
+        });
+    },
+    listCatalog(): Promise<{ items: IndexerDefinition[] }> {
+        return request<{ items: IndexerDefinition[] }>('/api/v1/indexer-catalog');
     },
 };

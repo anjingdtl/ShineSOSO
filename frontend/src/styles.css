@@ -352,3 +352,110 @@ a:hover {
     text-align: center;
     padding: 40px 0;
 }
+
+/* Indexer page */
+.page-header h1 {
+    margin: 0 0 4px;
+}
+.page-sub {
+    color: var(--text-muted);
+    margin: 0 0 16px;
+}
+.notice {
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+}
+.notice-success {
+    background: #ecfdf5;
+    color: #065f46;
+}
+.notice-error {
+    background: #fef2f2;
+    color: #991b1b;
+}
+@media (prefers-color-scheme: dark) {
+    .notice-success { background: #064e3b; color: #d1fae5; }
+    .notice-error   { background: #7f1d1d; color: #fee2e2; }
+}
+.add-form {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.form-row {
+    display: grid;
+    gap: 6px;
+}
+.form-row > span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.form-row input,
+.form-row select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+}
+.indexer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+.indexer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+}
+.indexer-row.is-disabled {
+    opacity: 0.55;
+}
+.indexer-main {
+    display: grid;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+.indexer-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.indexer-meta {
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.indexer-error {
+    color: #b91c1c;
+    font-size: 12px;
+}
+.indexer-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+}
+.badge-healthy { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge-degraded { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.badge-unhealthy, .badge-error { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.badge-disabled { background: var(--bg-elevated); color: var(--text-muted); }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }

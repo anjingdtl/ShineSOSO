@@ -29,11 +29,34 @@ export interface InstalledIndexer {
     name: string;
     enabled: boolean;
     baseUrl: string;
+    definitionVersion?: string;
     status: IndexerHealth;
     lastCheckedAt?: string;
     lastSuccessAt?: string;
     lastError?: string;
     responseTimeMs?: number;
+    consecutiveFails?: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface IndexerDefinition {
+    id: string;
+    name: string;
+    description?: string;
+    version: string;
+    language?: string;
+    type: string;
+    protocol: string;
+}
+
+export interface IndexerTestResult {
+    ok: boolean;
+    statusCode?: number;
+    durationMs: number;
+    resultCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
 }
 
 export interface SearchFilters {

@@ -24,10 +24,17 @@ describe('SearchPage', () => {
 });
 
 describe('IndexerPage', () => {
-    it('shows the empty state when no indexers are installed', () => {
+    it('shows the empty state when no indexers are installed', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ items: [] }),
+        } as Response);
         render(wrap(<IndexerPage />) as React.ReactElement);
         expect(screen.getByText('索引器')).toBeInTheDocument();
-        expect(screen.getByText('尚无索引器')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/尚无索引器/)).toBeInTheDocument();
+        });
     });
 });
 
