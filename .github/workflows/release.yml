@@ -1,0 +1,51 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create the GitHub Release
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build easysearch.exe
+        run: .\scripts\build.ps1
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: easysearch-exe
+          path: dist/easysearch.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/easysearch.exe
+          generate_release_notes: true
+          draft: true   # author can review before publishing
