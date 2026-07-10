@@ -185,7 +185,7 @@ ShineSOSO/
 
 ## 已知遗留 / 风险
 
-1. **JSON/XML declarative adapter** — Phase 5 留了 `ErrFormatUnsupported`，目前只支持 HTML；JSON/XML 解码器已写入计划但未实现（YAML 引擎已为 declarative 路径铺好路）。
+1. **JSON / XML declarative adapter** — ✅ 已实现（commit 见 `git log -- backend/internal/indexer/declarative_json.go backend/internal/indexer/declarative_xml.go`）。`declarativeAdapter.Search` 在 `Format` 为 `json` / `xml` 时分别走 `runJSON` / `runXML`，复用 `normalize` 流水线。
 2. **签名槽空着** — `signatures/` 目录已留，但 `cmd/catalog-manifest` 不生成 manifest.sig，spec §26.3 "建议对 manifest 进行数字签名" 仍未启用。
 3. **`path` 包错误过滤** — `validator.go` 仍使用相对宽松的 `quickHostSafetyCheck`，运行时安全由 `security.DefaultValidator` 二次把关。
 4. **Phase 7 测试覆盖目标 ≥ 80%** — 当前已有大量单测，但未量化覆盖率；正式发布前需跑 `go test -coverprofile` 并补足缺口。

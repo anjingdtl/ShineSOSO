@@ -1,15 +1,17 @@
-// Package indexer — declarative adapter (Phase 5 YAML, spec §12.3).
+// Package indexer — declarative adapter (Phase 5 YAML, spec §12.3,
+// JSON / XML added in Phase 8).
 //
 // The declarative adapter turns a YAML IndexerDefinition into a live
 // IndexerAdapter: it composes the search URL with the restricted
-// template engine, GETs through the indexer.Client, parses HTML with
-// goquery, and produces model.SearchResult values.
+// template engine, GETs through the indexer.Client, parses the response
+// in HTML / JSON / XML form, and produces model.SearchResult values.
 //
-// v1 supports the spec's HTML format only. JSON / XML / Torznab are
-// reserved for Phase 6 and will reject with ErrFormatUnsupported.
+// Torznab is handled by its own torznab.go adapter; the declarative
+// factory still rejects "torznab" so callers route to the right one.
 package indexer
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -70,10 +72,6 @@ func (a *declarativeAdapter) Test(ctx context.Context) TestResult {
 
 // Search runs a single user query and returns the raw results.
 func (a *declarativeAdapter) Search(ctx context.Context, q model.SearchQuery) ([]model.SearchResult, error) {
-	if a.def.Result.Format != "html" {
-		return nil, ErrFormatUnsupported
-	}
-
 	page := "1"
 	u, err := a.buildURL(q.Keyword, q.Category, "", page)
 	if err != nil {
@@ -88,11 +86,29 @@ func (a *declarativeAdapter) Search(ctx context.Context, q model.SearchQuery) ([
 		return nil, &StatusCodeError{StatusCode: resp.StatusCode, URL: resp.Request.URL}
 	}
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	switch a.def.Result.Format {
+	case "", "html":
+		return a.runHTML(body)
+	case "json":
+		return a.runJSON(ctx, body, a.def.Result)
+	case "xml":
+		return a.runXML(ctx, body, a.def.Result)
+	}
+	return nil, ErrFormatUnsupported
+}
+
+// runHTML parses an HTML response body and feeds each matching row
+// through the existing extractRow pipeline.
+func (a *declarativeAdapter) runHTML(body []byte) ([]model.SearchResult, error) {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
-
 	out := make([]model.SearchResult, 0)
 	rows := doc.Find(a.def.Result.Rows.Selector)
 	if a.def.Result.Rows.Selector == "" {
