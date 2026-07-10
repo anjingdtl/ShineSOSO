@@ -97,8 +97,11 @@
    - 不影响 MVP：用户可通过 YAML + Torznab 协议覆盖绝大多数公开索引器
 2. **目录 manifest 未启用数字签名**（progress #2）
    - SHA-256 校验已启用；公钥签名按 spec §26.3 为"建议"而非必须
-3. **后端核心包覆盖率 ≥ 80% 量化待跑**（progress #3）
-   - Phase 7-1 待 `go test -cover` 验证（依赖 Go 环境）
+3. **后端核心包覆盖率**（已量化，2026-07-10）
+   - 命令：`cd backend && go test -coverprofile=cov.out ./internal/normalize/... ./internal/security/... ./internal/search/... ./internal/indexer/...`
+   - 逐包：`normalize=91.20%`、`security=83.90%`、`search=90.50%`、`indexer=83.20%`
+   - 平均：87.20% — 达成 80% 目标。
+   - 留作 v0.1.1 补测对象：（全部达标，无需补测）。
 
 ## MVP 发布决策
 
