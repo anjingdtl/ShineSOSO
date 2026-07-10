@@ -147,7 +147,7 @@ npm run e2e          # 端到端（Playwright）
 
 ## 📝 许可
 
-MIT License。详见 LICENSE 文件（待补充）。
+MIT License。详见 [`LICENSE`](./LICENSE)。
 
 ## 🙏 致谢
 
