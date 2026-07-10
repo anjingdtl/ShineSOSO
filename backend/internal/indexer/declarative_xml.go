@@ -16,7 +16,6 @@ package indexer
 
 import (
 	"bytes"
-	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -29,7 +28,7 @@ import (
 
 // runXML parses an XML body and extracts rows defined by the `row`
 // anchor in def.Fields.
-func (a *declarativeAdapter) runXML(_ context.Context, body []byte, def model.ResultDefinition) ([]model.SearchResult, error) {
+func (a *declarativeAdapter) runXML(body []byte, def model.ResultDefinition) ([]model.SearchResult, error) {
 	f, ok := def.Fields["row"]
 	if !ok {
 		return nil, fmt.Errorf("declarative xml: no `row` anchor field declared")

@@ -140,6 +140,8 @@ npm run e2e          # 端到端（Playwright）
 |---|---|---|
 | `EASYSEARCH_DATA_DIR` | `%APPDATA%\EasySearch\data` | 数据目录 |
 | `EASYSEARCH_CATALOG_URL` | （空） | 远程目录 manifest URL（留空则用内置目录） |
+| `EASYSEARCH_CATALOG_PUBKEY` | （空） | 远程目录 manifest Ed25519 公钥（base64, 32 bytes）；留空则跳过签名验证（仅校验 SHA-256） |
+| `EASYSEARCH_CATALOG_PRIVKEY` | （空） | `cmd/catalog-manifest --sign` 的私钥（base64, 64 bytes）；仅签名时使用，不在运行时读取 |
 | `EASYSEARCH_LOG_LEVEL` | `info` | 日志级别（`debug`/`info`/`warn`/`error`） |
 
 ## 🤝 贡献

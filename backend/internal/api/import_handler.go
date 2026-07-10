@@ -124,35 +124,25 @@ func (h *ImportHandler) Import(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Optional probe
 	if req.Test {
-		// We can only probe adapters the current build understands;
-		// skip with a clear note if not.
-		if def.Result.Format != "html" {
-			resp.Test = &indexer.TestResult{
-				OK:           false,
-				DurationMs:   0,
-				ErrorCode:    "FORMAT_UNSUPPORTED",
-				ErrorMessage: "测试仅支持 html 格式；其他格式待后续版本",
-			}
+		// Build a transient installed indexer pointing at the first
+		// link so adapter.Test() can compose a URL. The declarative
+		// factory now accepts html|json|xml (post-Phase 8); only
+		// unsupported formats (e.g. torznab routed through here by
+		// mistake) yield a factory error, surfaced as ADAPTER_BUILD.
+		base := def.Links[0]
+		transient := model.InstalledIndexer{
+			ID:      def.ID,
+			Name:    def.Name,
+			BaseURL: base,
+		}
+		adapter, aErr := indexer.NewDeclarativeFactory().Create(def, transient, h.HTTPClient)
+		if aErr != nil {
+			resp.Test = &indexer.TestResult{OK: false, ErrorCode: "ADAPTER_BUILD", ErrorMessage: aErr.Error()}
 		} else {
-			installed, _ := h.Catalog.GetDefinition(def.ID)
-			_ = installed
-			// Build a transient installed indexer pointing at the
-			// first link so adapter.Test() can compose a URL.
-			base := def.Links[0]
-			transient := model.InstalledIndexer{
-				ID:    def.ID,
-				Name:  def.Name,
-				BaseURL: base,
-			}
-			adapter, aErr := indexer.NewDeclarativeFactory().Create(def, transient, h.HTTPClient)
-			if aErr != nil {
-				resp.Test = &indexer.TestResult{OK: false, ErrorCode: "ADAPTER_BUILD", ErrorMessage: aErr.Error()}
-			} else {
-				ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
-				defer cancel()
-				res := adapter.Test(ctx)
-				resp.Test = &res
-			}
+			ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+			defer cancel()
+			res := adapter.Test(ctx)
+			resp.Test = &res
 		}
 	}
 

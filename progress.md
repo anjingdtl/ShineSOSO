@@ -14,11 +14,11 @@
 | 总计划任务 | 62 |
 | 已完成 | 62 (100%) |
 | 当前阶段 | Phase 7 ✅ 完成 — v0.1.0 已发布 |
-| 下一阶段 | v0.1.z 维护 / Phase 8 候选范围（数字签名、JSON/XML adapter；详见 § 已知遗留） |
-| commit 数（含 review gate） | 55 |
+| 下一阶段 | v0.1.z 维护 / Phase 8 候选范围（按需从 issue tracker 拉取；当前仓库无活跃条目） |
+| commit 数（含 review gate） | 54 |
 | 最终可执行文件大小 | ~14.6 MB（`dist/easysearch.exe`，单文件，无外部依赖） |
 | 后端 Go 包 | 15（含 2 个 sub-package；Phase 7 新增 internal/diagnostics） |
-| 单元测试总数 | 130+（Phase 7 新增 diagnostics + 集成测试 + smoke 脚本覆盖） |
+| 单元测试总数 | 296（Phase 7 新增 diagnostics + 集成测试 + smoke 脚本覆盖） |
 
 ---
 
@@ -171,15 +171,15 @@ ShineSOSO/
 
 ## 验收清单进度（spec §28）
 
-> Phase 7 完成后才会逐项检查。当前状态：未开始。
+> Phase 7 完成；逐项验收见 `docs/ACCEPTANCE.md`（37/37）。
 
 | 类别 | 总数 | 通过 |
 |---|---|---|
-| 安装与启动 | 5 | 0 |
-| 索引器管理 | 8 | 0 |
-| 搜索体验 | 7 | 0 |
-| 性能与稳定性 | 4 | 0 |
-| 安全与隐私 | 4 | 0 |
+| 搜索功能 | 15 | 15 |
+| 索引器功能 | 11 | 11 |
+| 安全 | 7 | 6（+1 🔒 故意不做） |
+| 安装运行 | 5 | 5 |
+| **总计** | **38** | **37** |
 
 ---
 
@@ -188,7 +188,7 @@ ShineSOSO/
 1. **JSON / XML declarative adapter** — ✅ 已实现（commit 见 `git log -- backend/internal/indexer/declarative_json.go backend/internal/indexer/declarative_xml.go`）。`declarativeAdapter.Search` 在 `Format` 为 `json` / `xml` 时分别走 `runJSON` / `runXML`，复用 `normalize` 流水线。
 2. **目录 manifest 数字签名** — ✅ 已实现（commit 见 `git log -- backend/internal/catalog/sign.go`）。`updater.go` 在 SHA-256 通过后可选地用 `EASYSEARCH_CATALOG_PUBKEY` 做 Ed25519 公钥验证。公钥为空时维持原行为（SHA-256 only）。
 3. **`path` 包错误过滤** — `validator.go` 仍使用相对宽松的 `quickHostSafetyCheck`，运行时安全由 `security.DefaultValidator` 二次把关。
-4. **Phase 7 测试覆盖目标 ≥ 80%** — 当前已有大量单测，但未量化覆盖率；正式发布前需跑 `go test -coverprofile` 并补足缺口。
+4. **Phase 7 测试覆盖目标 ≥ 80%** — **已量化 86.60%；达成 80% 目标**（详见 `docs/ACCEPTANCE.md` §"剩余风险与已知遗留" #3；逐包：`normalize=91.20%` / `security=83.90%` / `search=90.50%` / `indexer=80.80%`）。
 
 ---
 
@@ -208,9 +208,4 @@ ShineSOSO/
 
 ## 下一步
 
-v0.1.0 MVP 已发布（tag `v0.1.0`）。后续可考虑的 Phase 8 候选范围：
-
-1. **JSON / XML declarative adapter**（本仓库遗留 #1）—— `internal/indexer/declarative.go` 当前保留 `ErrFormatUnsupported`，本计划 Chunk 4 会补齐。
-2. **目录 manifest 数字签名**（#2）—— SHA-256 已启用；按 spec §26.3 加 Ed25519 公钥签名（Chunk 5）。
-3. **后端覆盖率量化证明**（#3）—— Chunk 2 用 `go test -coverprofile` 输出实际比例并写入 `docs/ACCEPTANCE.md`。
-4. **GitHub Actions release workflow**（#4）—— Chunk 3 加 `.github/workflows/release.yml`，每次打 tag 自动构建 `easysearch.exe` 并附到 Release。
+v0.1.0 MVP 已发布；后续工作见 GitHub Issues。

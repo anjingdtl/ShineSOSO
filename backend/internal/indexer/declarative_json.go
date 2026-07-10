@@ -14,7 +14,6 @@
 package indexer
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -26,7 +25,7 @@ import (
 
 // runJSON parses a JSON body and applies the field paths declared in
 // def.Fields, using the `row` anchor to find row blocks.
-func (a *declarativeAdapter) runJSON(_ context.Context, body []byte, def model.ResultDefinition) ([]model.SearchResult, error) {
+func (a *declarativeAdapter) runJSON(body []byte, def model.ResultDefinition) ([]model.SearchResult, error) {
 	var doc any
 	if err := json.Unmarshal(body, &doc); err != nil {
 		return nil, fmt.Errorf("declarative json: %w", err)

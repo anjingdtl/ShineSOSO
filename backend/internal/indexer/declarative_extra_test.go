@@ -132,13 +132,18 @@ func TestDeclarativeAdapter_Search_ParsesHTML(t *testing.T) {
 	}
 }
 
-func TestDeclarativeAdapter_Search_FailsOnUnsupportedFormat(t *testing.T) {
+func TestDeclarativeAdapter_Search_FailsOnInvalidJSONBody(t *testing.T) {
+	// Renamed: this exercises an invalid JSON body for Format="json",
+	// not a factory-level format rejection. The Search switch routes
+	// Format=json through runJSON, which fails to parse the HTML body
+	// the mock server returns (declarativeFixtureHTML is not valid
+	// JSON).
 	_, inst, def := withMockServer(t, declarativeFixtureHTML)
 	def.Result.Format = "json"
 	a := &declarativeAdapter{id: def.ID, def: def, installed: inst}
 	_, err := a.Search(context.Background(), model.SearchQuery{Keyword: "x"})
 	if err == nil {
-		t.Error("expected ErrFormatUnsupported for json")
+		t.Error("expected error for non-JSON body")
 	}
 }
 

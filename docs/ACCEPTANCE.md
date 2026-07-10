@@ -91,16 +91,16 @@
 
 ## 剩余风险与已知遗留
 
-1. **JSON/XML declarative adapter 未实现**（progress §"已知遗留" #1）
-   - 当前 YAML 引擎只支持 HTML declarative；JSON/XML 走 Torznab 或
-     后续 Phase 8+ 实现
-   - 不影响 MVP：用户可通过 YAML + Torznab 协议覆盖绝大多数公开索引器
-2. **目录 manifest 未启用数字签名**（progress #2）
-   - SHA-256 校验已启用；公钥签名按 spec §26.3 为"建议"而非必须
+1. **JSON/XML declarative adapter**（progress §"已知遗留" #1）— ✅ 已实现
+   - `internal/indexer/declarative_json.go` + `declarative_xml.go`；工厂现接受 `Format: ""|html|json|xml`
+   - 继续拒绝 `torznab`（由 Torznab 路径独立处理）
+2. **目录 manifest 数字签名**（progress #2）— ✅ 已实现
+   - `internal/catalog/sign.go` + `updater.go` 验证闸；可选启用 `EASYSEARCH_CATALOG_PUBKEY`
+   - 公钥为空时维持原行为（SHA-256 only）
 3. **后端核心包覆盖率**（已量化，2026-07-10）
    - 命令：`cd backend && go test -coverprofile=cov.out ./internal/normalize/... ./internal/security/... ./internal/search/... ./internal/indexer/...`
-   - 逐包：`normalize=91.20%`、`security=83.90%`、`search=90.50%`、`indexer=83.20%`
-   - 平均：87.20% — 达成 80% 目标。
+   - 逐包：`normalize=91.20%`、`security=83.90%`、`search=90.50%`、`indexer=80.80%`
+   - 平均：(91.20 + 83.90 + 90.50 + 80.80) / 4 = 86.60% — 达成 80% 目标。
    - 留作 v0.1.1 补测对象：（全部达标，无需补测）。
 
 ## MVP 发布决策

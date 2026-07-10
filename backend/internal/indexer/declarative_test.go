@@ -154,12 +154,26 @@ func TestExtractRow_parsesTwoRows(t *testing.T) {
 	}
 }
 
-func TestFactory_rejectsNonHTML(t *testing.T) {
+func TestFactory_acceptsHTMLJSONXML(t *testing.T) {
+	// Post-Phase-8: the declarative factory owns html|json|xml (and the
+	// empty string, which Search() treats like html). Anything else —
+	// notably "torznab" — is rejected so callers route to the right
+	// factory.
+	for _, fmt_ := range []string{"", "html", "json", "xml"} {
+		def, installed := sampleDecl()
+		def.Result.Format = fmt_
+		if _, err := NewDeclarativeFactory().Create(def, installed, NewClient()); err != nil {
+			t.Errorf("format %q: want success, got %v", fmt_, err)
+		}
+	}
+}
+
+func TestFactory_rejectsNonDeclarativeFormat(t *testing.T) {
 	def, installed := sampleDecl()
-	def.Result.Format = "json"
+	def.Result.Format = "torznab"
 	_, err := NewDeclarativeFactory().Create(def, installed, NewClient())
 	if err == nil || !strings.Contains(err.Error(), "not supported") {
-		t.Fatalf("want format error, got %v", err)
+		t.Fatalf("want format error for torznab, got %v", err)
 	}
 }
 

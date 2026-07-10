@@ -19,6 +19,8 @@ the project adheres to [Semantic Versioning](https://semver.org/).
   → search → diagnostics → shutdown)
 - `docs/USER_GUIDE.md` — user-facing manual covering install, search,
   YAML import, diagnostics, FAQ
+- **JSON / XML 声明式 adapter** — `internal/indexer/declarative{_json,_xml}.go`。工厂现在接受 `Format: "" | html | json | xml`；继续拒绝 `torznab` 由 Torznab 路径处理。详见 progress.md。
+- **目录 manifest Ed25519 签名** — `internal/catalog/sign.go` + `updater.go` 验证闸。可选用 `EASYSEARCH_CATALOG_PUBKEY` 公钥启用；空值保持 SHA-256-only 行为。
 
 ### Removed
 

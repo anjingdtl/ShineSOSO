@@ -1,7 +1,10 @@
 package catalog_test
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -381,5 +384,123 @@ func TestUpdater_Activate_callsOnDefinitionActivatedHook(t *testing.T) {
 	}
 	if got.BaseURL != customBase {
 		t.Errorf("base_url lost: %q", got.BaseURL)
+	}
+}
+
+// writeSignedManifest is the signing-enabled counterpart of
+// writeManifest: it builds the same Manifest struct, computes its
+// SigningBytes(), signs them with the supplied ed25519.PrivateKey, and
+// writes the JSON with the Signature field populated. t.Setenv is
+// expected to be used by the caller to set
+// EASYSEARCH_CATALOG_PUBKEY=<base64(pub)> before calling Activate.
+func writeSignedManifest(t *testing.T, dir string, entries []map[string]string, version string, priv ed25519.PrivateKey) {
+	t.Helper()
+	m := builtin.Manifest{
+		Schema: 1, Version: version,
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	for _, e := range entries {
+		m.Definitions = append(m.Definitions, builtin.ManifestEntry{
+			ID: e["id"], Version: e["version"],
+			File: e["file"], SHA256: e["sha256"],
+		})
+	}
+	signing, err := m.SigningBytes()
+	if err != nil {
+		t.Fatalf("SigningBytes: %v", err)
+	}
+	m.Signature = catalog.Sign(signing, priv)
+	raw, _ := json.MarshalIndent(&m, "", "  ")
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestUpdater_SignatureGate_AcceptsSignedManifest verifies that setting
+// EASYSEARCH_CATALOG_PUBKEY turns the Ed25519 signature gate ON, and a
+// manifest whose Signature field is a valid signature over its own
+// SigningBytes() activates normally.
+func TestUpdater_SignatureGate_AcceptsSignedManifest(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("keygen: %v", err)
+	}
+	t.Setenv("EASYSEARCH_CATALOG_PUBKEY", base64.StdEncoding.EncodeToString(pub))
+
+	dir := t.TempDir()
+	raw := []byte("schema: 1\nid: signed\nname: Signed\nversion: 1.0.0\ntype: public\nprotocol: declarative\nlinks: [\"https://example.com/\"]\nsearch: {method: GET, path: /, query: {}}\nresponse: {format: html, rows: {selector: li}, fields: {title: {selector: a, value: text, required: true}}}\n")
+	if err := os.MkdirAll(filepath.Join(dir, "definitions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "definitions", "signed.yml"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeSignedManifest(t, dir, []map[string]string{
+		{"id": "signed", "version": "1.0.0", "file": "definitions/signed.yml", "sha256": sha256Hex(raw)},
+	}, "v1", priv)
+
+	repo := newTestRepo(t)
+	cat := catalog.New(repo)
+	u := catalog.NewUpdater(cat, catalog.UpdaterConfig{})
+	report, err := u.Activate(os.DirFS(dir), ".")
+	if err != nil {
+		t.Fatalf("Activate: %v", err)
+	}
+	if report.After != "v1" {
+		t.Errorf("after=%q", report.After)
+	}
+	if _, ok := cat.GetDefinition("signed"); !ok {
+		t.Errorf("definition not registered after signed activation")
+	}
+}
+
+// TestUpdater_SignatureGate_RejectsBadSignature flips a single byte of
+// the on-disk manifest *after* signing so the embedded signature no
+// longer matches the manifest's own SigningBytes(). With
+// EASYSEARCH_CATALOG_PUBKEY set, the updater must refuse to activate.
+func TestUpdater_SignatureGate_RejectsBadSignature(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("keygen: %v", err)
+	}
+	t.Setenv("EASYSEARCH_CATALOG_PUBKEY", base64.StdEncoding.EncodeToString(pub))
+
+	dir := t.TempDir()
+	raw := []byte("schema: 1\nid: signed\nname: Signed\nversion: 1.0.0\ntype: public\nprotocol: declarative\nlinks: [\"https://example.com/\"]\nsearch: {method: GET, path: /, query: {}}\nresponse: {format: html, rows: {selector: li}, fields: {title: {selector: a, value: text, required: true}}}\n")
+	if err := os.MkdirAll(filepath.Join(dir, "definitions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "definitions", "signed.yml"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeSignedManifest(t, dir, []map[string]string{
+		{"id": "signed", "version": "1.0.0", "file": "definitions/signed.yml", "sha256": sha256Hex(raw)},
+	}, "v1", priv)
+
+	// Flip a byte in the version field by rewriting the manifest with a
+	// tampered version string. The signature was made over "v1" so the
+	// verifier will reject "v1-tampered".
+	mfstPath := filepath.Join(dir, "manifest.json")
+	original, err := os.ReadFile(mfstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := strings.Replace(string(original), `"version": "v1"`, `"version": "v1-tampered"`, 1)
+	if tampered == string(original) {
+		t.Fatalf("byte flip had no effect — test setup wrong")
+	}
+	if err := os.WriteFile(mfstPath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := newTestRepo(t)
+	cat := catalog.New(repo)
+	u := catalog.NewUpdater(cat, catalog.UpdaterConfig{})
+	_, err = u.Activate(os.DirFS(dir), ".")
+	if err == nil || !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("expected signature verification failure, got %v", err)
+	}
+	if _, ok := cat.GetDefinition("signed"); ok {
+		t.Errorf("definition should NOT be registered after tampered signature")
 	}
 }

@@ -110,10 +110,6 @@ func main() {
 		})
 	}
 
-	enc, err := json.MarshalIndent(&m, "", "  ")
-	if err != nil {
-		die("marshal: %v", err)
-	}
 	if sign {
 		keyB64 := os.Getenv("EASYSEARCH_CATALOG_PRIVKEY")
 		key, err := base64.StdEncoding.DecodeString(keyB64)
@@ -125,12 +121,21 @@ func main() {
 			log.Fatalf("signing bytes: %v", err)
 		}
 		m.Signature = signManifest(signing, ed25519.PrivateKey(key))
-		final, _ := json.MarshalIndent(&m, "", "  ")
+		final, err := json.MarshalIndent(&m, "", "  ")
+		if err != nil {
+			log.Fatalf("marshal: %v", err)
+		}
 		if err := os.WriteFile(*out, append(final, '\n'), 0o644); err != nil {
 			log.Fatalf("rewrite: %v", err)
 		}
-	} else if err := os.WriteFile(*out, append(enc, '\n'), 0o644); err != nil {
-		die("write %s: %v", *out, err)
+	} else {
+		enc, err := json.MarshalIndent(&m, "", "  ")
+		if err != nil {
+			die("marshal: %v", err)
+		}
+		if err := os.WriteFile(*out, append(enc, '\n'), 0o644); err != nil {
+			die("write %s: %v", *out, err)
+		}
 	}
 	fmt.Printf("wrote %s with %d definitions (version %s)\n", *out, len(m.Definitions), m.Version)
 	_ = strings.TrimSpace

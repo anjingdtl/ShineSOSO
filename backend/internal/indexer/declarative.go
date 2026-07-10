@@ -95,9 +95,9 @@ func (a *declarativeAdapter) Search(ctx context.Context, q model.SearchQuery) ([
 	case "", "html":
 		return a.runHTML(body)
 	case "json":
-		return a.runJSON(ctx, body, a.def.Result)
+		return a.runJSON(body, a.def.Result)
 	case "xml":
-		return a.runXML(ctx, body, a.def.Result)
+		return a.runXML(body, a.def.Result)
 	}
 	return nil, ErrFormatUnsupported
 }
@@ -341,8 +341,15 @@ type declarativeFactory struct{}
 func NewDeclarativeFactory() AdapterFactory { return declarativeFactory{} }
 
 func (declarativeFactory) Create(def model.IndexerDefinition, installed model.InstalledIndexer, client *Client) (IndexerAdapter, error) {
-	if def.Result.Format != "html" {
-		return nil, fmt.Errorf("%w: %q (only html in this build)", ErrFormatUnsupported, def.Result.Format)
+	// The factory only owns the declarative family of formats. Torznab
+	// (and any future non-declarative protocol) must be routed to its
+	// own factory — refuse them here so the registry's Get+Create path
+	// never silently falls back to the wrong parser.
+	switch def.Result.Format {
+	case "", "html", "json", "xml":
+		// supported
+	default:
+		return nil, fmt.Errorf("%w: %q (declarative factory accepts html|json|xml)", ErrFormatUnsupported, def.Result.Format)
 	}
 	if installed.BaseURL == "" {
 		return nil, errors.New("declarative adapter: installed.BaseURL is empty")
