@@ -4,8 +4,8 @@
 
 一款运行在本地 Windows 上的轻量级**资源搜索**工具：聚合多个公开索引器，统一展示去重后的搜索结果，一键复制磁力链接。**不抓取、不下载、不做账号登录**。
 
-![status](https://img.shields.io/badge/status-MVP%20ready-success)
-![version](https://img.shields.io/badge/version-0.4.0-blue)
+![status](https://img.shields.io/badge/status-v0.1.0-success)
+![version](https://img.shields.io/badge/version-v0.1.0%20(public)%20%2F%200.4.0%20(internal)-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ## ✨ 功能亮点
@@ -29,7 +29,7 @@
 | Phase 4 — 索引器管理 | ✅ |
 | Phase 5 — YAML 引擎 | ✅ |
 | Phase 6 — Torznab 与目录更新 | ✅ |
-| Phase 7 — 测试与发布 | 🚧 进行中 |
+| Phase 7 — 测试与发布 | ✅ |
 
 详细进度见 [`progress.md`](./progress.md)；规格见 [`spec-o1.md`](./spec-o1.md)。
 
@@ -108,6 +108,7 @@ go test ./backend/internal/...                 # 跑单元测试
 go test -coverprofile=cov.out ./backend/...    # 覆盖率
 go build -o backend/easysearch.exe ./backend/cmd/easysearch
 ./backend/easysearch.exe --version             # 0.4.0
+（对外版本号 = `v0.1.0`；`0.4.0` 是 `go build -ldflags -X main.version` 的内部编译标识。）
 ```
 
 ### 前端（Node 18+）
