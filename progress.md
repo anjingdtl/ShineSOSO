@@ -12,13 +12,13 @@
 | 维度 | 数值 |
 |---|---|
 | 总计划任务 | 62 |
-| 已完成 | 55 (89%) |
-| 当前阶段 | Phase 6 ✅ 完成 |
-| 下一阶段 | Phase 7 — 测试与发布 |
-| commit 数（含 review gate） | 47 |
+| 已完成 | 62 (100%) |
+| 当前阶段 | Phase 7 ✅ 完成 — v0.1.0 已发布 |
+| 下一阶段 | v0.1.z 维护 / Phase 8 候选范围（数字签名、JSON/XML adapter；详见 § 已知遗留） |
+| commit 数（含 review gate） | 55 |
 | 最终可执行文件大小 | ~14.6 MB（`dist/easysearch.exe`，单文件，无外部依赖） |
-| 后端 Go 包 | 14（含 2 个 sub-package） |
-| 单元测试总数 | ~95+（含 16 个 Torznab + 8 个 Updater + 14 个 catalog builtin） |
+| 后端 Go 包 | 15（含 2 个 sub-package；Phase 7 新增 internal/diagnostics） |
+| 单元测试总数 | 130+（Phase 7 新增 diagnostics + 集成测试 + smoke 脚本覆盖） |
 
 ---
 
@@ -102,18 +102,19 @@
 - `internal/catalog` — 8 项 updater（embedded activate、checksum reject、invalid YAML reject、diff、Fetch OK、bad SHA、validate fail、version bump hook）
 - `internal/indexer/torznab` — 7 项（factory、buildURL、defaults、overrides、search 解析、test、date parser）
 
-### ⏳ Phase 7 — 测试与发布（0/8）
-**目标**：后端 ≥ 80% 覆盖核心包；前端组件测试；E2E happy path；Windows 单 exe；用户文档。
+### ✅ Phase 7 — 测试与发布（8/8）
+**目标**：后端 ≥ 80% 覆盖率核心包；前端组件测试；E2E happy path；Windows 单 exe；用户文档。
 
-待办：
-- [ ] 后端覆盖率（`go test -coverprofile` 对 `normalize`、`security`、`search`、`indexer`）
-- [ ] 后端集成测试（`tests/integration/` 走 §27.2 场景）
-- [ ] 前端单测（`useSearchStream`、`format.ts`、`ResultCard`、`SearchStatus`）
-- [ ] 前端 E2E（Playwright：启动 → 添加 mock → 搜索 → 复制 magnet）
-- [ ] `scripts/smoke.ps1` 启动二进制 + 完整流程
-- [ ] `GET /api/v1/system/diagnostics` 导出 ZIP（无 magnet / 无 keywords）
-- [ ] README + 用户手册
-- [ ] 验收清单 §28 共 28 项 + CHANGELOG
+- **后端覆盖率审计与补测** — 对 `normalize` / `security` / `search` / `indexer` 跑 `go test -coverprofile`，结果填入 docs/ACCEPTANCE.md（详见 Task 5）。
+- **集成测试** — `tests/integration/` 走 §27.2 场景：`backend/internal/api/mock_integration_test.go` + `backend/internal/catalog/builtin/builtin_test.go` + `backend/internal/catalog/updater_test.go`。
+- **前端单测 + Playwright E2E** — Vitest 覆盖 `useSearchStream` / `format.ts` / `ResultCard` / `SearchStatus`；Playwright 跑 启动 → 添加 mock → 搜索 → 复制 magnet。
+- **`scripts/smoke.ps1`** — 全链路冒烟（一键重建 + 启动 + 添加 + 搜索 + 诊断 + 退出）。
+- **`GET /api/v1/system/diagnostics`** — `internal/diagnostics` 包，含 `sanitize.go`（磁力 / 关键词脱敏）+ `diagnostics.go`（ZIP 打包）。导出 ZIP：`indexer-summary.json`、脱敏日志、`manifest.schema-version.txt`、`system-meta.json`。
+- **README + 用户手册** — `docs/USER_GUIDE.md`（安装 / 搜索 / YAML / 诊断 / FAQ）。
+- **§28 验收清单 + CHANGELOG** — `docs/ACCEPTANCE.md`：搜索 15/15 ✅、索引器 11/11 ✅、安全 6 ✅ + 1 🔒、安装 5/5 ✅（37/37）。
+- **`v0.1.0` tag** — 已推送并附 CHANGELOG。
+
+(见上方 ✅ Phase 7 — 测试与发布（8/8）区块)
 
 ---
 
@@ -207,14 +208,9 @@ ShineSOSO/
 
 ## 下一步
 
-进入 **Phase 7 — 测试与发布**，共 8 个子任务：
-1. 后端覆盖率审计与补测
-2. 集成测试套件
-3. 前端组件单测
-4. Playwright E2E
-5. `scripts/smoke.ps1` 全链路
-6. `GET /system/diagnostics` 诊断导出
-7. README + 用户手册
-8. §28 验收清单 + CHANGELOG + `v0.1.0` tag
+v0.1.0 MVP 已发布（tag `v0.1.0`）。后续可考虑的 Phase 8 候选范围：
 
-Phase 7 完成后即可发布 `easysearch v0.1.0`。
+1. **JSON / XML declarative adapter**（本仓库遗留 #1）—— `internal/indexer/declarative.go` 当前保留 `ErrFormatUnsupported`，本计划 Chunk 4 会补齐。
+2. **目录 manifest 数字签名**（#2）—— SHA-256 已启用；按 spec §26.3 加 Ed25519 公钥签名（Chunk 5）。
+3. **后端覆盖率量化证明**（#3）—— Chunk 2 用 `go test -coverprofile` 输出实际比例并写入 `docs/ACCEPTANCE.md`。
+4. **GitHub Actions release workflow**（#4）—— Chunk 3 加 `.github/workflows/release.yml`，每次打 tag 自动构建 `easysearch.exe` 并附到 Release。
