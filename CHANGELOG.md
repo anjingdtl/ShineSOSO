@@ -20,6 +20,10 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 - `docs/USER_GUIDE.md` — user-facing manual covering install, search,
   YAML import, diagnostics, FAQ
 
+### Removed
+
+- Historical `projects/ShineSOSO/` directory removed (pre-superproject era leftover; v0.1.0 release lives at repo root). Pre-cleanup state preserved as git tag `backup-pre-reset` (commit `2339f5e`).
+
 ## [0.4.0] - 2026-07-09 (Phase 6)
 
 ### Added
