@@ -186,7 +186,7 @@ ShineSOSO/
 ## 已知遗留 / 风险
 
 1. **JSON / XML declarative adapter** — ✅ 已实现（commit 见 `git log -- backend/internal/indexer/declarative_json.go backend/internal/indexer/declarative_xml.go`）。`declarativeAdapter.Search` 在 `Format` 为 `json` / `xml` 时分别走 `runJSON` / `runXML`，复用 `normalize` 流水线。
-2. **签名槽空着** — `signatures/` 目录已留，但 `cmd/catalog-manifest` 不生成 manifest.sig，spec §26.3 "建议对 manifest 进行数字签名" 仍未启用。
+2. **目录 manifest 数字签名** — ✅ 已实现（commit 见 `git log -- backend/internal/catalog/sign.go`）。`updater.go` 在 SHA-256 通过后可选地用 `EASYSEARCH_CATALOG_PUBKEY` 做 Ed25519 公钥验证。公钥为空时维持原行为（SHA-256 only）。
 3. **`path` 包错误过滤** — `validator.go` 仍使用相对宽松的 `quickHostSafetyCheck`，运行时安全由 `security.DefaultValidator` 二次把关。
 4. **Phase 7 测试覆盖目标 ≥ 80%** — 当前已有大量单测，但未量化覆盖率；正式发布前需跑 `go test -coverprofile` 并补足缺口。
 

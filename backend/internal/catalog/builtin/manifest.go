@@ -35,6 +35,21 @@ type Manifest struct {
 	Version     string            `json:"version"`
 	GeneratedAt string            `json:"generatedAt"`
 	Definitions []ManifestEntry   `json:"definitions"`
+	Signature   []byte            `json:"signature,omitempty"`
+}
+
+// SigningBytes returns the canonical byte sequence that was/will be
+// signed by the catalog signing key. It is the manifest without the
+// Signature field, JSON-marshalled. Used both by the updater (to
+// verify) and by cmd/catalog-manifest (to produce a signature).
+func (m *Manifest) SigningBytes() ([]byte, error) {
+	tmp := struct {
+		Schema      int               `json:"schema"`
+		Version     string            `json:"version"`
+		GeneratedAt string            `json:"generatedAt"`
+		Definitions []ManifestEntry   `json:"definitions"`
+	}{m.Schema, m.Version, m.GeneratedAt, m.Definitions}
+	return json.Marshal(tmp)
 }
 
 // ManifestEntry is one row in manifest.json's `definitions` array.

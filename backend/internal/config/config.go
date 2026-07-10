@@ -39,6 +39,12 @@ type Config struct {
     // CatalogManifestURL is the URL the catalog updater polls on demand.
     // Empty disables online updates — the bundled embedded catalog is used.
     CatalogManifestURL string
+
+    // CatalogSignaturePubKeyB64 is the base64-encoded Ed25519 public key
+    // (32 bytes raw, 44 base64 chars) used to verify remote catalog
+    // manifests. Empty disables signature verification — the SHA-256
+    // gate alone is then the only integrity check.
+    CatalogSignaturePubKeyB64 string
 }
 
 // Default returns the production config with environment overrides applied.
@@ -52,6 +58,7 @@ func Default() Config {
         OpenBrowser:       true,
         DevMode:           false,
         CatalogManifestURL: os.Getenv("EASYSEARCH_CATALOG_URL"),
+        CatalogSignaturePubKeyB64: os.Getenv("EASYSEARCH_CATALOG_PUBKEY"),
     }
 }
 

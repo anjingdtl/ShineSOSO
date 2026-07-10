@@ -19,7 +19,9 @@ package catalog
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -181,6 +183,23 @@ func (u *Updater) activateLocked(fsys fs.FS, dir string, source string) (*Update
 		}
 		loaded[def.ID] = def
 		newEntries = append(newEntries, e)
+	}
+
+	// Optional Ed25519 signature gate, layered on top of SHA-256.
+	// When EASYSEARCH_CATALOG_PUBKEY is empty (the default), this
+	// step is a no-op and behaviour is unchanged from prior versions.
+	if pubB64 := os.Getenv("EASYSEARCH_CATALOG_PUBKEY"); pubB64 != "" {
+		pub, err := base64.StdEncoding.DecodeString(pubB64)
+		if err != nil || len(pub) != ed25519.PublicKeySize {
+			return nil, fmt.Errorf("updater: invalid EASYSEARCH_CATALOG_PUBKEY: %w", err)
+		}
+		signing, err := m.SigningBytes()
+		if err != nil {
+			return nil, fmt.Errorf("updater: marshal for signing: %w", err)
+		}
+		if !Verify(signing, m.Signature, pub) {
+			return nil, errors.New("updater: catalog signature verification failed")
+		}
 	}
 
 	// Compute the diff before we touch state.
