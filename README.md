@@ -129,7 +129,7 @@ npm run e2e          # 端到端（Playwright）
 | `scripts/build.ps1` | Windows 一键构建（前端 + Go → `dist\easysearch.exe`） |
 | `scripts/dev.ps1` | 开发模式启动后端（让 `npm run dev` 自动代理） |
 | `scripts/dev.sh` | 同上，Bash 版本 |
-| `scripts/phase4-smoke.ps1` | Phase 4 冒烟（已弃用，新脚本覆盖） |
+| `scripts/phase4-smoke.ps1` | Phase 4 冒烟（已纳入 `smoke.ps1` 全链路；保留作历史单步用例） |
 | `scripts/phase5-smoke.ps1` | Phase 5 冒烟 |
 | `scripts/phase6-smoke.ps1` | Phase 6 冒烟（Torznab + 目录更新） |
 | `scripts/smoke.ps1` | **全链路冒烟**（启动 → 添加 → 搜索 → 诊断 → 退出） |
