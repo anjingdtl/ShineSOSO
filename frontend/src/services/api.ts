@@ -3,7 +3,7 @@
 // in dev the Vite proxy forwards /api to the Go backend on the port
 // declared in $EASYSEARCH_DATA_DIR/.port.
 
-import type { DiscoveryCandidate, ImportResponse, IndexerDefinition, IndexerTestResult, InstalledIndexer, ProwlarrCandidate, ProwlarrStatus, SystemStatus } from '../types';
+import type { DiscoveryCandidate, ImportResponse, IndexerDefinition, IndexerTestResult, InstalledIndexer, ProwlarrCandidate, ProwlarrInstalledIndexer, ProwlarrStatus, SystemStatus } from '../types';
 
 export class ApiError extends Error {
     constructor(
@@ -99,6 +99,7 @@ export const api = {
     discoverIndexers(query: string): Promise<{ items: DiscoveryCandidate[] }> { return request('/api/v1/indexer-discovery/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query})}); },
     probeIndexer(url: string): Promise<{ baseUrl: string }> { return request('/api/v1/indexer-discovery/probe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}); },
     getProwlarrStatus(): Promise<ProwlarrStatus> { return request('/api/v1/prowlarr/status'); },
+    listProwlarrIndexers(): Promise<{ items: ProwlarrInstalledIndexer[] }> { return request('/api/v1/prowlarr/indexers'); },
     discoverProwlarrIndexers(query: string): Promise<{ items: ProwlarrCandidate[] }> { return request('/api/v1/prowlarr/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query})}); },
     addProwlarrIndexer(schemaId: string): Promise<ProwlarrCandidate> { return request('/api/v1/prowlarr/indexers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({schemaId})}); },
     importDefinition(yaml: string, filename: string, withTest = true): Promise<ImportResponse> {

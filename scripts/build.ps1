@@ -7,13 +7,18 @@
 #      invoked from a console.
 # Output: dist/easysearch.exe
 
+param(
+    [string]$OutputPath = ''
+)
+
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $frontend = Join-Path $root 'frontend'
 $backend = Join-Path $root 'backend'
 $distDir = Join-Path $root 'dist'
-$exePath = Join-Path $distDir 'easysearch.exe'
+$exePath = if ($OutputPath) { [IO.Path]::GetFullPath($OutputPath) } else { Join-Path $distDir 'easysearch.exe' }
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $exePath) | Out-Null
 
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../services/api';
-import type { IndexerDefinition, IndexerTestResult, InstalledIndexer, ProwlarrCandidate, ProwlarrStatus } from '../types';
+import type { IndexerDefinition, IndexerTestResult, InstalledIndexer, ProwlarrCandidate, ProwlarrInstalledIndexer, ProwlarrStatus } from '../types';
 import { ImportDialog } from '../features/ImportDialog';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
@@ -20,6 +20,7 @@ function StatusBadge({ status }: { status: InstalledIndexer['status'] }): JSX.El
 
 export function IndexerPage(): JSX.Element {
     const [installed, setInstalled] = useState<InstalledIndexer[]>([]);
+    const [prowlarrInstalled, setProwlarrInstalled] = useState<ProwlarrInstalledIndexer[]>([]);
     const [catalog, setCatalog] = useState<IndexerDefinition[]>([]);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<Notice>(null);
@@ -40,10 +41,11 @@ export function IndexerPage(): JSX.Element {
     const refresh = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, cat, engine] = await Promise.all([api.listIndexers(), api.listCatalog(), api.getProwlarrStatus()]);
+            const [list, cat, engine, managed] = await Promise.all([api.listIndexers(), api.listCatalog(), api.getProwlarrStatus(), api.listProwlarrIndexers()]);
             setInstalled(list.items);
             setCatalog(cat.items);
             setEngineStatus(engine);
+            setProwlarrInstalled(managed.items);
         } catch (err) {
             setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) });
         } finally {
@@ -87,7 +89,7 @@ export function IndexerPage(): JSX.Element {
         finally { setQuickAdding(null); }
     }, [refresh]);
     const onEngineSearch = useCallback(async (e: React.FormEvent) => { e.preventDefault(); setEngineSearching(true); setNotice(null); try { const r = await api.discoverProwlarrIndexers(engineQuery); setEngineResults(r.items); } catch (err) { setNotice({kind:'error',text:err instanceof Error?err.message:String(err)}); } finally { setEngineSearching(false); } }, [engineQuery]);
-    const onEngineAdd = useCallback(async (candidate: ProwlarrCandidate) => { setEngineAdding(candidate.id); setNotice(null); try { await api.addProwlarrIndexer(candidate.id); setNotice({kind:'success',text:`Prowlarr 已测试并添加「${candidate.name}」，现在可以直接搜索资源。`}); } catch (err) { setNotice({kind:'error',text:`未能添加：${err instanceof Error?err.message:String(err)}`}); } finally { setEngineAdding(null); } }, []);
+    const onEngineAdd = useCallback(async (candidate: ProwlarrCandidate) => { setEngineAdding(candidate.id); setNotice(null); try { await api.addProwlarrIndexer(candidate.id); await refresh(); setNotice({kind:'success',text:`Prowlarr 已测试并添加「${candidate.name}」，已显示在下方“已安装”列表。`}); } catch (err) { setNotice({kind:'error',text:`未能添加：${err instanceof Error?err.message:String(err)}`}); } finally { setEngineAdding(null); } }, [refresh]);
 
     const discoverable = catalog.filter((d) => !d.id.startsWith('demo-') && !d.id.startsWith('example-'))
         .filter((d) => `${d.name} ${d.description ?? ''} ${d.language ?? ''} ${d.protocol}`.toLowerCase().includes(catalogQuery.trim().toLowerCase()));
@@ -168,13 +170,21 @@ export function IndexerPage(): JSX.Element {
             </details>
 
             <div className="card">
-                <h2>已安装（{installed.length}）</h2>
+                <h2>已安装（{installed.length + prowlarrInstalled.length}）</h2>
                 {loading ? (
                     <p>加载中…</p>
-                ) : installed.length === 0 ? (
+                ) : installed.length === 0 && prowlarrInstalled.length === 0 ? (
                     <p className="empty-state">尚无索引器。先从上方添加一个。</p>
                 ) : (
                     <ul className="indexer-list">
+                        {prowlarrInstalled.map((idx) => (
+                            <li key={`prowlarr-${idx.id}`} className={`indexer-row ${idx.enabled ? '' : 'is-disabled'}`}>
+                                <div className="indexer-main">
+                                    <div className="indexer-name"><strong>{idx.name}</strong><span className={`badge ${idx.enabled ? 'badge-healthy' : 'badge-disabled'}`}>{idx.enabled ? 'Prowlarr 已启用' : 'Prowlarr 已停用'}</span></div>
+                                    <div className="indexer-meta"><span>内置 Prowlarr</span><span>·</span><span>{[idx.privacy, idx.protocol].filter(Boolean).join(' · ')}</span>{idx.urls?.[0] && <><span>·</span><span>{idx.urls[0]}</span></>}</div>
+                                </div>
+                            </li>
+                        ))}
                         {installed.map((idx) => (
                             <li key={idx.id} className={`indexer-row ${idx.enabled ? '' : 'is-disabled'}`}>
                                 <div className="indexer-main">

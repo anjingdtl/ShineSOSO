@@ -60,6 +60,25 @@ func (h *ProwlarrHandler) Add(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, item)
 }
 
+func (h *ProwlarrHandler) List(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Manager == nil {
+		WriteJSON(w, http.StatusOK, map[string]any{"items": []prowlarr.InstalledIndexer{}})
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 15*time.Second)
+	defer cancel()
+	items, err := h.Manager.ListInstalled(ctx)
+	if err != nil {
+		if h.Manager.Status().State != "ready" {
+			WriteJSON(w, http.StatusOK, map[string]any{"items": []prowlarr.InstalledIndexer{}})
+			return
+		}
+		WriteError(w, h.Logger, http.StatusServiceUnavailable, ErrorPayload{Code: "PROWLARR_UNAVAILABLE", Message: err.Error()})
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
 func contextWithTimeout(r *http.Request, timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(r.Context(), timeout)
 }

@@ -66,6 +66,7 @@ func NewRouter(deps ServerDeps) http.Handler {
 		}
 		if deps.Prowlarr != nil {
 			r.Get("/prowlarr/status", deps.Prowlarr.Status)
+			r.Get("/prowlarr/indexers", deps.Prowlarr.List)
 			r.Post("/prowlarr/discover", deps.Prowlarr.Discover)
 			r.Post("/prowlarr/indexers", deps.Prowlarr.Add)
 		}

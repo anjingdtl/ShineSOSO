@@ -7,7 +7,7 @@ Set shell = CreateObject("Wscript.Shell")
 root = fso.GetParentFolderName(WScript.ScriptFullName)
 exePath = fso.BuildPath(root, "easysearch.exe")
 If Not fso.FileExists(exePath) Then
-  MsgBox "找不到 easysearch.exe。请重新解压完整发布包。", vbCritical, "EasySearch"
+  MsgBox "easysearch.exe was not found. Extract the complete package again.", vbCritical, "EasySearch"
   WScript.Quit 1
 End If
 shell.Run """" & exePath & """", WIN_HIDDEN, False

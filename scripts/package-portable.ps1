@@ -9,11 +9,12 @@ $root = Split-Path -Parent $PSScriptRoot
 $releaseRoot = Join-Path $root 'dist\portable\EasySearch'
 $zipPath = Join-Path $root ("dist\EasySearch-v{0}-windows-x64-portable.zip" -f $Version)
 $cacheRoot = Join-Path $root 'dist\cache'
+$packageBuildExe = Join-Path $root 'dist\package-build\easysearch.exe'
 
-& (Join-Path $PSScriptRoot 'build.ps1')
+& (Join-Path $PSScriptRoot 'build.ps1') -OutputPath $packageBuildExe
 if (Test-Path $releaseRoot) { Remove-Item -LiteralPath $releaseRoot -Recurse -Force }
 New-Item -ItemType Directory -Path $releaseRoot -Force | Out-Null
-Copy-Item (Join-Path $root 'dist\easysearch.exe') (Join-Path $releaseRoot 'easysearch.exe')
+Copy-Item $packageBuildExe (Join-Path $releaseRoot 'easysearch.exe')
 Copy-Item (Join-Path $PSScriptRoot 'portable-start.vbs') (Join-Path $releaseRoot '启动 EasySearch.vbs')
 Copy-Item (Join-Path $root 'THIRD_PARTY_NOTICES.md') (Join-Path $releaseRoot 'THIRD_PARTY_NOTICES.md')
 

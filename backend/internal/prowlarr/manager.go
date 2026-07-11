@@ -49,6 +49,18 @@ type Candidate struct {
 	Reason      string `json:"reason,omitempty"`
 }
 
+// InstalledIndexer is an indexer that lives in the managed Prowlarr
+// database. It is intentionally distinct from EasySearch's legacy local
+// definition records, but the UI presents both in one installed area.
+type InstalledIndexer struct {
+	ID       int64    `json:"id"`
+	Name     string   `json:"name"`
+	Enabled  bool     `json:"enabled"`
+	Protocol string   `json:"protocol,omitempty"`
+	Privacy  string   `json:"privacy,omitempty"`
+	URLs     []string `json:"urls,omitempty"`
+}
+
 type Manager struct {
 	mu         sync.RWMutex
 	executable string
@@ -300,6 +312,32 @@ func (m *Manager) Discover(ctx context.Context, query string) ([]Candidate, erro
 	if len(out) > 60 {
 		out = out[:60]
 	}
+	return out, nil
+}
+
+func (m *Manager) ListInstalled(ctx context.Context) ([]InstalledIndexer, error) {
+	m.mu.RLock()
+	base, key, ready := m.baseURL, m.apiKey, m.status.State == "ready"
+	m.mu.RUnlock()
+	if !ready {
+		return nil, fmt.Errorf("Prowlarr 引擎尚未就绪")
+	}
+	var raw []struct {
+		ID          int64    `json:"id"`
+		Name        string   `json:"name"`
+		Enable      bool     `json:"enable"`
+		Protocol    string   `json:"protocol"`
+		Privacy     string   `json:"privacy"`
+		IndexerURLs []string `json:"indexerUrls"`
+	}
+	if err := m.request(ctx, http.MethodGet, base, key, "/api/v1/indexer", nil, &raw); err != nil {
+		return nil, err
+	}
+	out := make([]InstalledIndexer, 0, len(raw))
+	for _, item := range raw {
+		out = append(out, InstalledIndexer{ID: item.ID, Name: item.Name, Enabled: item.Enable, Protocol: item.Protocol, Privacy: item.Privacy, URLs: item.IndexerURLs})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
 	return out, nil
 }
 

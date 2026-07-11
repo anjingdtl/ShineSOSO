@@ -55,6 +55,7 @@ export interface DiscoveryCandidate { name: string; url: string; summary?: strin
 
 export interface ProwlarrStatus { state: 'unavailable' | 'starting' | 'ready' | 'error'; version?: string; message?: string }
 export interface ProwlarrCandidate { id: string; name: string; description?: string; protocol?: string; privacy?: string; canQuickAdd: boolean; reason?: string }
+export interface ProwlarrInstalledIndexer { id: number; name: string; enabled: boolean; protocol?: string; privacy?: string; urls?: string[] }
 
 export interface IndexerTestResult {
     ok: boolean;
