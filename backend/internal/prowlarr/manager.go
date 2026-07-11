@@ -500,7 +500,52 @@ func (m *Manager) Search(ctx context.Context, query model.SearchQuery) ([]model.
 		if id == "" {
 			id = fmt.Sprintf("prowlarr-%d", i)
 		}
-		out = append(out, model.SearchResult{ID: id, Title: r.Title, Category: query.Category, SizeBytes: r.Size, Seeders: r.Seeders, Leechers: r.Leechers, Downloads: r.Grabs, PublishedAt: r.PublishDate, MagnetURL: r.MagnetURL, TorrentURL: r.DownloadURL, DetailURL: r.InfoURL, InfoHash: r.InfoHash, IndexerID: m.ID(), IndexerName: r.Indexer})
+		out = append(out, model.SearchResult{ID: id, Title: r.Title, Category: query.Category, SizeBytes: r.Size, Seeders: r.Seeders, Leechers: r.Leechers, Downloads: r.Grabs, PublishedAt: r.PublishDate, MagnetURL: r.MagnetURL, TorrentURL: m.browserDownloadURL(base, r.DownloadURL), DetailURL: r.InfoURL, InfoHash: r.InfoHash, IndexerID: m.ID(), IndexerName: r.Indexer})
 	}
 	return out, nil
+}
+
+// browserDownloadURL keeps the Prowlarr API key server-side when Prowlarr
+// returns a localhost download endpoint. Public remote torrent URLs are safe
+// to open directly and remain unchanged.
+func (m *Manager) browserDownloadURL(base, raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if isProwlarrLocalURL(base, raw) {
+		return "/api/v1/prowlarr/download?url=" + url.QueryEscape(raw)
+	}
+	return raw
+}
+
+func isProwlarrLocalURL(base, raw string) bool {
+	b, err := url.Parse(base)
+	if err != nil {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(b.Scheme, u.Scheme) && strings.EqualFold(b.Host, u.Host) && strings.HasPrefix(u.Path, "/api/v1/")
+}
+
+// Download fetches only a Prowlarr-local download endpoint with the private
+// API key. The caller streams the response to the browser.
+func (m *Manager) Download(ctx context.Context, raw string) (*http.Response, error) {
+	m.mu.RLock()
+	base, key, ready := m.baseURL, m.apiKey, m.status.State == "ready"
+	m.mu.RUnlock()
+	if !ready {
+		return nil, fmt.Errorf("Prowlarr 引擎尚未就绪")
+	}
+	if !isProwlarrLocalURL(base, raw) {
+		return nil, fmt.Errorf("下载地址不是受管 Prowlarr 本机地址")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Api-Key", key)
+	return m.http.Do(req)
 }

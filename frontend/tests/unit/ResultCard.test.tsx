@@ -98,7 +98,7 @@ describe('ResultCard', () => {
         });
     });
 
-    it('disables copy button when no URL', () => {
+    it('explains when an indexer does not return a download URL', () => {
         render(
             <ResultCard
                 result={makeResult({
@@ -109,8 +109,7 @@ describe('ResultCard', () => {
                 })}
             />
         );
-        const copyBtn = screen.getByRole('button', { name: /复制/ });
-        expect(copyBtn).toBeDisabled();
+        expect(screen.getByText(/未提供下载链接/)).toBeInTheDocument();
     });
 
     it('renders detail link when detailUrl is separate from primary', () => {

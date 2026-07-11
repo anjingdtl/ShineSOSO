@@ -25,9 +25,11 @@ func (f *Filters) Apply(q model.SearchQuery, in []model.SearchResult) []model.Se
 	}
 	out := make([]model.SearchResult, 0, len(in))
 	for _, r := range in {
-		if strings.TrimSpace(q.Keyword) != "" && textMatchScore(q.Keyword, r.Title) == 0 {
-			continue
-		}
+		// The upstream indexer has already executed the user's keyword query.
+		// A second exact local-title gate drops valid translated/aliased results
+		// (for example a Chinese title returned under its English release name).
+		// Keyword relevance remains part of ranking; only explicit user filters
+		// below are allowed to remove an upstream result.
 		if len(indexerFilter) > 0 {
 			if _, ok := indexerFilter[r.IndexerID]; !ok {
 				continue

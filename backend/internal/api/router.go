@@ -35,6 +35,7 @@ func NewRouter(deps ServerDeps) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/system/status", deps.System.GetStatus)
+		r.Post("/system/heartbeat", deps.System.Heartbeat)
 		if deps.Diagnostics != nil {
 			r.Get("/system/diagnostics", deps.Diagnostics.Get)
 		}
@@ -67,6 +68,7 @@ func NewRouter(deps ServerDeps) http.Handler {
 		if deps.Prowlarr != nil {
 			r.Get("/prowlarr/status", deps.Prowlarr.Status)
 			r.Get("/prowlarr/indexers", deps.Prowlarr.List)
+			r.Get("/prowlarr/download", deps.Prowlarr.Download)
 			r.Post("/prowlarr/discover", deps.Prowlarr.Discover)
 			r.Post("/prowlarr/indexers", deps.Prowlarr.Add)
 		}

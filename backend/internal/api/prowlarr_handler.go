@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -14,6 +15,33 @@ import (
 type ProwlarrHandler struct {
 	Logger  *slog.Logger
 	Manager *prowlarr.Manager
+}
+
+// Download proxies a Prowlarr-local torrent response so the generated API key
+// never needs to be embedded in a browser URL.
+func (h *ProwlarrHandler) Download(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Manager == nil {
+		WriteError(w, h.Logger, http.StatusServiceUnavailable, ErrorPayload{Code: "PROWLARR_UNAVAILABLE", Message: "Prowlarr 引擎不可用"})
+		return
+	}
+	raw := strings.TrimSpace(r.URL.Query().Get("url"))
+	if raw == "" {
+		WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{Code: "INVALID_REQUEST", Message: "缺少下载地址"})
+		return
+	}
+	resp, err := h.Manager.Download(r.Context(), raw)
+	if err != nil {
+		WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{Code: "PROWLARR_DOWNLOAD_FAILED", Message: err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	for _, header := range []string{"Content-Type", "Content-Disposition", "Content-Length"} {
+		if value := resp.Header.Get(header); value != "" {
+			w.Header().Set(header, value)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
 }
 
 func (h *ProwlarrHandler) Status(w http.ResponseWriter, _ *http.Request) {

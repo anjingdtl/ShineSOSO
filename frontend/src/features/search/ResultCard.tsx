@@ -33,11 +33,7 @@ const KIND_LABEL: Record<string, string> = {
 
 export function ResultCard({ result }: { result: SearchResult }): JSX.Element {
     const primaryURL = result.magnetUrl ?? result.torrentUrl ?? result.directUrl ?? result.detailUrl ?? '';
-    const kind = result.magnetUrl ? 'magnet'
-        : result.torrentUrl ? 'torrent'
-        : result.directUrl ? 'direct'
-        : result.detailUrl ? 'detail'
-        : '';
+    const kind = result.magnetUrl ? 'magnet' : result.torrentUrl ? 'torrent' : result.directUrl ? 'direct' : result.detailUrl ? 'detail' : '';
     const [copyState, setCopyState] = useState<CopyState>('idle');
 
     const onCopy = async () => {
@@ -63,24 +59,16 @@ export function ResultCard({ result }: { result: SearchResult }): JSX.Element {
                 来源：{result.indexerName}
             </div>
             <div className="result-card-actions">
-                <button
-                    className="btn"
-                    type="button"
-                    onClick={onCopy}
-                    disabled={!primaryURL}
-                    aria-label="复制下载链接"
-                >
-                    {copyState === 'copied' ? '已复制' : copyState === 'error' ? '复制失败' : '复制链接'}
-                </button>
-                <button
-                    className="btn"
-                    type="button"
-                    onClick={() => openExternal(primaryURL, kind)}
-                    disabled={!primaryURL}
-                    aria-label="打开链接"
-                >
-                    打开
-                </button>
+                {result.magnetUrl && <>
+                    <button className="btn" type="button" onClick={onCopy} aria-label="复制磁力链接">{copyState === 'copied' ? '已复制' : copyState === 'error' ? '复制失败' : '复制磁力'}</button>
+                    <button className="btn btn-primary" type="button" onClick={() => openExternal(result.magnetUrl!, 'magnet')} aria-label="打开磁力链接">打开磁力</button>
+                </>}
+                {result.torrentUrl && <button className="btn btn-primary" type="button" onClick={() => openExternal(result.torrentUrl!, 'torrent')} aria-label="下载种子文件">下载种子</button>}
+                {!result.magnetUrl && !result.torrentUrl && result.directUrl && <>
+                    <button className="btn" type="button" onClick={onCopy} aria-label="复制直链">{copyState === 'copied' ? '链接已复制' : copyState === 'error' ? '复制失败' : '复制直链'}</button>
+                    <button className="btn btn-primary" type="button" onClick={() => openExternal(result.directUrl!, 'direct')} aria-label="打开直链">打开直链</button>
+                </>}
+                {!primaryURL && <span className="form-help">该索引器仅返回了元数据，未提供下载链接。</span>}
                 {result.detailUrl && result.detailUrl !== primaryURL && (
                     <button
                         className="btn btn-link"

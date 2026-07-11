@@ -16,6 +16,7 @@ if (Test-Path $releaseRoot) { Remove-Item -LiteralPath $releaseRoot -Recurse -Fo
 New-Item -ItemType Directory -Path $releaseRoot -Force | Out-Null
 Copy-Item $packageBuildExe (Join-Path $releaseRoot 'easysearch.exe')
 Copy-Item (Join-Path $PSScriptRoot 'portable-start.vbs') (Join-Path $releaseRoot '启动 EasySearch.vbs')
+Copy-Item (Join-Path $PSScriptRoot 'portable-stop.vbs') (Join-Path $releaseRoot '停止 EasySearch.vbs')
 Copy-Item (Join-Path $root 'THIRD_PARTY_NOTICES.md') (Join-Path $releaseRoot 'THIRD_PARTY_NOTICES.md')
 
 # Prowlarr is distributed as the official Windows x64 portable ZIP. We use the
@@ -61,6 +62,7 @@ EasySearch 绿色免安装版
 1. 解压整个文件夹。
 2. 双击“启动 EasySearch.vbs”。
 3. 程序会自动打开浏览器；无需安装 Node、Go、Python、Prowlarr 或其他依赖。
+4. 关闭最后一个 EasySearch 浏览器窗口约 20 秒后，后台会自动退出。若需要立即退出，双击“停止 EasySearch.vbs”。
 
 数据保存在 %APPDATA%\EasySearch\data，不会写入本文件夹。
 

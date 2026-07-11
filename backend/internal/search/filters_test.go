@@ -27,14 +27,14 @@ func TestFiltersByIndexerID(t *testing.T) {
 	}
 }
 
-func TestFiltersRemoveKeywordMismatches(t *testing.T) {
+func TestFiltersKeepsResultsReturnedByIndexerSearch(t *testing.T) {
 	f := NewFilters()
 	got := f.Apply(model.SearchQuery{Keyword: "The Matrix"}, []model.SearchResult{
 		{Title: "The.Matrix.1999.1080p"},
 		{Title: "Unrelated blockbuster"},
 	})
-	if len(got) != 1 || got[0].Title != "The.Matrix.1999.1080p" {
-		t.Fatalf("unexpected keyword filter output: %+v", got)
+	if len(got) != 2 {
+		t.Fatalf("upstream search results must not be discarded by a local title match: %+v", got)
 	}
 }
 

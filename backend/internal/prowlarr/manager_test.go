@@ -24,3 +24,12 @@ func TestNeedsInputAllowsOptionalTuningButRejectsCredentials(t *testing.T) {
 		t.Fatal("credential field must require setup")
 	}
 }
+
+func TestProwlarrLocalDownloadURL(t *testing.T) {
+	if !isProwlarrLocalURL("http://127.0.0.1:9696", "http://127.0.0.1:9696/api/v1/download?x=1") {
+		t.Fatal("managed local download URL should be proxied")
+	}
+	if isProwlarrLocalURL("http://127.0.0.1:9696", "https://example.com/file.torrent") {
+		t.Fatal("external download URL must not be proxied")
+	}
+}

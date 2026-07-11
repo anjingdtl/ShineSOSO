@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -119,13 +120,17 @@ func main() {
 	}
 	logger.Info("catalog updater ready", "manifest_url", cfg.CatalogManifestURL, "active_version", updater.ActiveVersion())
 
+	uiHeartbeat := &atomic.Int64{}
+	uiHeartbeat.Store(time.Now().UnixNano())
+	systemHandler := &api.SystemHandler{
+		StartTime:   startTime,
+		Version:     version,
+		Logger:      logger.Logger,
+		UIHeartbeat: uiHeartbeat,
+	}
 	router := api.NewRouter(api.ServerDeps{
 		Logger: logger.Logger,
-		System: &api.SystemHandler{
-			StartTime: startTime,
-			Version:   version,
-			Logger:    logger.Logger,
-		},
+		System: systemHandler,
 		Search: api.NewSearchHandler(logger.Logger, cat, httpClient).WithProwlarr(prowlarrManager),
 		Indexer: &api.IndexerHandler{
 			Logger:     logger.Logger,
@@ -198,6 +203,21 @@ func main() {
 			fmt.Println("please open the URL above in your browser")
 		} else {
 			logger.Info("browser launched", "url", url)
+			// When the last EasySearch page is closed it stops sending heartbeats.
+			// A grace period keeps ordinary reloads and slow initial browser starts
+			// from stopping the process while still releasing release-file locks.
+			go func() {
+				ticker := time.NewTicker(2 * time.Second)
+				defer ticker.Stop()
+				for range ticker.C {
+					last := time.Unix(0, uiHeartbeat.Load())
+					if time.Since(last) > 20*time.Second {
+						logger.Info("web UI closed; stopping EasySearch")
+						stop()
+						return
+					}
+				}
+			}()
 		}
 	} else {
 		fmt.Println("press Ctrl+C to stop")
