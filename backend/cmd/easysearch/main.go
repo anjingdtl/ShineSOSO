@@ -19,6 +19,7 @@ import (
 	"github.com/local/easysearch/backend/internal/indexer"
 	"github.com/local/easysearch/backend/internal/launcher"
 	"github.com/local/easysearch/backend/internal/logging"
+	"github.com/local/easysearch/backend/internal/prowlarr"
 	"github.com/local/easysearch/backend/internal/store"
 )
 
@@ -89,6 +90,18 @@ func main() {
 		logger.Warn("catalog refresh on boot", "err", err)
 	}
 	httpClient := indexer.NewClient()
+	// The release package places Prowlarr next to EasySearch. Its data and
+	// generated API key stay in EasySearch's own per-user data directory.
+	self, selfErr := os.Executable()
+	if selfErr != nil {
+		logger.Warn("resolve executable path for Prowlarr runtime", "err", selfErr)
+	}
+	prowlarrManager := prowlarr.NewManager(prowlarr.Config{
+		Executable: filepath.Join(filepath.Dir(self), "runtime", "prowlarr", "Prowlarr.exe"),
+		DataDir:    filepath.Join(cfg.DataDir, "prowlarr"),
+	})
+	prowlarrManager.StartAsync(context.Background())
+	defer prowlarrManager.Close()
 
 	// Phase 6: catalog updater — boots with embedded catalog active, can
 	// pull a remote manifest when the user hits POST /api/v1/indexer-catalog/update.
@@ -113,7 +126,7 @@ func main() {
 			Version:   version,
 			Logger:    logger.Logger,
 		},
-		Search: api.NewSearchHandler(logger.Logger, cat, httpClient),
+		Search: api.NewSearchHandler(logger.Logger, cat, httpClient).WithProwlarr(prowlarrManager),
 		Indexer: &api.IndexerHandler{
 			Logger:     logger.Logger,
 			Catalog:    cat,
@@ -131,6 +144,7 @@ func main() {
 			Updater: updater,
 		},
 		Discovery: &api.DiscoveryHandler{Logger: logger.Logger, IndexerClient: httpClient},
+		Prowlarr:  &api.ProwlarrHandler{Logger: logger.Logger, Manager: prowlarrManager},
 		Diagnostics: &api.DiagnosticsHandler{
 			StartTime: startTime,
 			Version:   version,

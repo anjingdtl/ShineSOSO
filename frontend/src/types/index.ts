@@ -53,6 +53,9 @@ export interface IndexerDefinition {
 }
 export interface DiscoveryCandidate { name: string; url: string; summary?: string; source?: string; type?: string; language?: string; protocol?: string; score?: number }
 
+export interface ProwlarrStatus { state: 'unavailable' | 'starting' | 'ready' | 'error'; version?: string; message?: string }
+export interface ProwlarrCandidate { id: string; name: string; description?: string; protocol?: string; privacy?: string; canQuickAdd: boolean; reason?: string }
+
 export interface IndexerTestResult {
     ok: boolean;
     statusCode?: number;

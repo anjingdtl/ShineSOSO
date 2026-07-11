@@ -20,6 +20,7 @@ type ServerDeps struct {
 	Catalog     *CatalogUpdateHandler
 	Discovery   *DiscoveryHandler
 	Diagnostics *DiagnosticsHandler
+	Prowlarr    *ProwlarrHandler
 }
 
 // NewRouter returns a chi.Mux with /api/v1 mounted, plus a /healthz alias.
@@ -62,6 +63,11 @@ func NewRouter(deps ServerDeps) http.Handler {
 		if deps.Discovery != nil {
 			r.Post("/indexer-discovery/search", deps.Discovery.Search)
 			r.Post("/indexer-discovery/probe", deps.Discovery.Probe)
+		}
+		if deps.Prowlarr != nil {
+			r.Get("/prowlarr/status", deps.Prowlarr.Status)
+			r.Post("/prowlarr/discover", deps.Prowlarr.Discover)
+			r.Post("/prowlarr/indexers", deps.Prowlarr.Add)
 		}
 	})
 

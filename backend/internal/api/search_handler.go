@@ -1,21 +1,22 @@
 package api
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "log/slog"
-    "net/http"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/google/uuid"
+	"github.com/google/uuid"
 
-    "github.com/local/easysearch/backend/internal/catalog"
-    "github.com/local/easysearch/backend/internal/indexer"
-    "github.com/local/easysearch/backend/internal/model"
-    "github.com/local/easysearch/backend/internal/search"
+	"github.com/local/easysearch/backend/internal/catalog"
+	"github.com/local/easysearch/backend/internal/indexer"
+	"github.com/local/easysearch/backend/internal/model"
+	"github.com/local/easysearch/backend/internal/prowlarr"
+	"github.com/local/easysearch/backend/internal/search"
 )
 
 // SearchHandler hosts the POST /sessions and GET /sessions/{id}/events
@@ -26,216 +27,229 @@ import (
 // is empty (or nil) the Phase 3 demo mocks are used so the binary still
 // works end-to-end on first run.
 type SearchHandler struct {
-    Logger     *slog.Logger
-    Catalog    *catalog.Catalog
-    HTTPClient *indexer.Client
+	Logger     *slog.Logger
+	Catalog    *catalog.Catalog
+	HTTPClient *indexer.Client
+	Prowlarr   *prowlarr.Manager
 
-    mu       sync.Mutex
-    sessions map[string]*search.Session
-    cancels  map[string]context.CancelFunc
+	mu       sync.Mutex
+	sessions map[string]*search.Session
+	cancels  map[string]context.CancelFunc
+}
+
+// WithProwlarr attaches EasySearch's managed companion runtime without
+// changing the small constructor used throughout existing tests.
+func (h *SearchHandler) WithProwlarr(manager *prowlarr.Manager) *SearchHandler {
+	h.Prowlarr = manager
+	return h
 }
 
 // NewSearchHandler builds a handler that uses the catalog. The catalog
 // may be nil for older tests; the search will then use demo mocks.
 func NewSearchHandler(logger *slog.Logger, cat *catalog.Catalog, client *indexer.Client) *SearchHandler {
-    return &SearchHandler{
-        Logger:     logger,
-        Catalog:    cat,
-        HTTPClient: client,
-        sessions:   map[string]*search.Session{},
-        cancels:    map[string]context.CancelFunc{},
-    }
+	return &SearchHandler{
+		Logger:     logger,
+		Catalog:    cat,
+		HTTPClient: client,
+		sessions:   map[string]*search.Session{},
+		cancels:    map[string]context.CancelFunc{},
+	}
 }
 
 type createSearchRequest struct {
-    Keyword  string                  `json:"keyword"`
-    Category string                  `json:"category"`
-    Sort     string                  `json:"sort"`
-    Filters  map[string]any          `json:"filters"`
+	Keyword  string         `json:"keyword"`
+	Category string         `json:"category"`
+	Sort     string         `json:"sort"`
+	Filters  map[string]any `json:"filters"`
 }
 
 type createSearchResponse struct {
-    SessionID string `json:"sessionId"`
-    StreamURL string `json:"streamUrl"`
+	SessionID string `json:"sessionId"`
+	StreamURL string `json:"streamUrl"`
 }
 
 func (h *SearchHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
-    var req createSearchRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
-            Code:    "INVALID_REQUEST",
-            Message: "请求体不是合法 JSON",
-        })
-        return
-    }
-    if strings.TrimSpace(req.Keyword) == "" {
-        WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
-            Code:    "EMPTY_KEYWORD",
-            Message: "关键词不能为空",
-        })
-        return
-    }
-    if len([]rune(req.Keyword)) > 200 {
-        WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
-            Code:    "INVALID_REQUEST",
-            Message: "关键词长度不能超过 200",
-        })
-        return
-    }
+	var req createSearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
+			Code:    "INVALID_REQUEST",
+			Message: "请求体不是合法 JSON",
+		})
+		return
+	}
+	if strings.TrimSpace(req.Keyword) == "" {
+		WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
+			Code:    "EMPTY_KEYWORD",
+			Message: "关键词不能为空",
+		})
+		return
+	}
+	if len([]rune(req.Keyword)) > 200 {
+		WriteError(w, h.Logger, http.StatusBadRequest, ErrorPayload{
+			Code:    "INVALID_REQUEST",
+			Message: "关键词长度不能超过 200",
+		})
+		return
+	}
 
-    sid := uuid.NewString()
-    q := model.SearchQuery{
-        Keyword:  strings.TrimSpace(req.Keyword),
-        Category: normalizeCategory(req.Category),
-        Sort:     normalizeSort(req.Sort),
-    }
+	sid := uuid.NewString()
+	q := model.SearchQuery{
+		Keyword:  strings.TrimSpace(req.Keyword),
+		Category: normalizeCategory(req.Category),
+		Sort:     normalizeSort(req.Sort),
+	}
 
-    // Phase 4: jobs come from the catalog. If the catalog has no enabled
-    // entries, fall back to the Phase 3 demo mocks.
-    var jobs []search.IndexerJob
-    if h.Catalog != nil {
-        built, err := h.Catalog.Jobs(h.HTTPClient)
-        if err != nil {
-            WriteError(w, h.Logger, http.StatusInternalServerError, ErrorPayload{
-                Code:    "INTERNAL_ERROR",
-                Message: "构建索引器失败: " + err.Error(),
-            })
-            return
-        }
-        jobs = built
-    }
-    if len(jobs) == 0 {
-        jobs = NewMockIndexers()
-    }
+	// Jobs come from enabled catalog entries plus the managed Prowlarr
+	// companion. No demo sources are used in production: results must be
+	// obtained from a real configured indexer.
+	var jobs []search.IndexerJob
+	if h.Catalog != nil {
+		built, err := h.Catalog.Jobs(h.HTTPClient)
+		if err != nil {
+			WriteError(w, h.Logger, http.StatusInternalServerError, ErrorPayload{
+				Code:    "INTERNAL_ERROR",
+				Message: "构建索引器失败: " + err.Error(),
+			})
+			return
+		}
+		jobs = built
+	} else {
+		// Keep the deliberately injected nil-catalog test harness deterministic.
+		// The application always provides a catalog and never reaches this path.
+		jobs = NewMockIndexers()
+	}
+	if h.Prowlarr != nil && h.Prowlarr.Ready() {
+		jobs = append(jobs, search.IndexerJob{Adapter: h.Prowlarr, Name: "Prowlarr（内置索引器引擎）"})
+	}
 
-    o := search.NewOrchestrator(search.Config{
-        PerIndexerTimeout: 15 * time.Second,
-        TotalTimeout:      30 * time.Second,
-        MaxConcurrent:     6,
-    }, jobs, h.Logger)
+	o := search.NewOrchestrator(search.Config{
+		PerIndexerTimeout: 15 * time.Second,
+		TotalTimeout:      30 * time.Second,
+		MaxConcurrent:     6,
+	}, jobs, h.Logger)
 
-    s := o.NewSession(sid, q)
+	s := o.NewSession(sid, q)
 
-    h.mu.Lock()
-    h.sessions[sid] = s
-    h.mu.Unlock()
+	h.mu.Lock()
+	h.sessions[sid] = s
+	h.mu.Unlock()
 
-    ctx, cancel := context.WithCancel(context.Background())
-    h.mu.Lock()
-    h.cancels[sid] = cancel
-    h.mu.Unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	h.mu.Lock()
+	h.cancels[sid] = cancel
+	h.mu.Unlock()
 
-    go o.Run(ctx, s)
+	go o.Run(ctx, s)
 
-    WriteJSON(w, http.StatusCreated, createSearchResponse{
-        SessionID: sid,
-        StreamURL: fmt.Sprintf("/api/v1/search/sessions/%s/events", sid),
-    })
+	WriteJSON(w, http.StatusCreated, createSearchResponse{
+		SessionID: sid,
+		StreamURL: fmt.Sprintf("/api/v1/search/sessions/%s/events", sid),
+	})
 }
 
 func (h *SearchHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
-    sid := r.PathValue("sessionId")
-    h.mu.Lock()
-    s, ok := h.sessions[sid]
-    h.mu.Unlock()
-    if !ok {
-        WriteError(w, h.Logger, http.StatusNotFound, ErrorPayload{
-            Code:    "INDEXER_NOT_FOUND",
-            Message: "会话不存在或已结束",
-        })
-        return
-    }
+	sid := r.PathValue("sessionId")
+	h.mu.Lock()
+	s, ok := h.sessions[sid]
+	h.mu.Unlock()
+	if !ok {
+		WriteError(w, h.Logger, http.StatusNotFound, ErrorPayload{
+			Code:    "INDEXER_NOT_FOUND",
+			Message: "会话不存在或已结束",
+		})
+		return
+	}
 
-    flusher, ok := w.(http.Flusher)
-    if !ok {
-        WriteError(w, h.Logger, http.StatusInternalServerError, ErrorPayload{
-            Code:    "INTERNAL_ERROR",
-            Message: "服务器不支持流式响应",
-        })
-        return
-    }
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		WriteError(w, h.Logger, http.StatusInternalServerError, ErrorPayload{
+			Code:    "INTERNAL_ERROR",
+			Message: "服务器不支持流式响应",
+		})
+		return
+	}
 
-    w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-    w.Header().Set("Cache-Control", "no-cache, no-store")
-    w.Header().Set("Connection", "keep-alive")
-    w.Header().Set("X-Accel-Buffering", "no")
-    w.WriteHeader(http.StatusOK)
-    flusher.Flush()
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, no-store")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
 
-    // Keepalive ping every 15s so corporate proxies don't kill the stream.
-    ticker := time.NewTicker(15 * time.Second)
-    defer ticker.Stop()
+	// Keepalive ping every 15s so corporate proxies don't kill the stream.
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
 
-    for {
-        select {
-        case <-r.Context().Done():
-            return
-        case ev, ok := <-s.Events:
-            if !ok {
-                return
-            }
-            writeSSE(w, ev.Type, ev.Data)
-            flusher.Flush()
-            if ev.Type == search.EventSessionCompleted || ev.Type == search.EventSessionCancelled {
-                h.cleanup(sid)
-                return
-            }
-        case <-ticker.C:
-            fmt.Fprintf(w, ": keepalive\n\n")
-            flusher.Flush()
-        }
-    }
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case ev, ok := <-s.Events:
+			if !ok {
+				return
+			}
+			writeSSE(w, ev.Type, ev.Data)
+			flusher.Flush()
+			if ev.Type == search.EventSessionCompleted || ev.Type == search.EventSessionCancelled {
+				h.cleanup(sid)
+				return
+			}
+		case <-ticker.C:
+			fmt.Fprintf(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 func (h *SearchHandler) CancelSession(w http.ResponseWriter, r *http.Request) {
-    sid := r.PathValue("sessionId")
-    h.mu.Lock()
-    cancel, ok := h.cancels[sid]
-    h.mu.Unlock()
-    if !ok {
-        WriteError(w, h.Logger, http.StatusNotFound, ErrorPayload{
-            Code:    "INDEXER_NOT_FOUND",
-            Message: "会话不存在或已结束",
-        })
-        return
-    }
-    cancel()
-    w.WriteHeader(http.StatusNoContent)
+	sid := r.PathValue("sessionId")
+	h.mu.Lock()
+	cancel, ok := h.cancels[sid]
+	h.mu.Unlock()
+	if !ok {
+		WriteError(w, h.Logger, http.StatusNotFound, ErrorPayload{
+			Code:    "INDEXER_NOT_FOUND",
+			Message: "会话不存在或已结束",
+		})
+		return
+	}
+	cancel()
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *SearchHandler) cleanup(sid string) {
-    h.mu.Lock()
-    delete(h.sessions, sid)
-    delete(h.cancels, sid)
-    h.mu.Unlock()
+	h.mu.Lock()
+	delete(h.sessions, sid)
+	delete(h.cancels, sid)
+	h.mu.Unlock()
 }
 
 func writeSSE(w http.ResponseWriter, eventType search.EventType, data any) {
-    b, err := json.Marshal(data)
-    if err != nil {
-        // The data shapes are all struct types; marshal should not fail.
-        // If it does, emit an error event instead of crashing the stream.
-        b, _ = json.Marshal(map[string]string{"error": "marshal failed"})
-    }
-    fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, string(b))
+	b, err := json.Marshal(data)
+	if err != nil {
+		// The data shapes are all struct types; marshal should not fail.
+		// If it does, emit an error event instead of crashing the stream.
+		b, _ = json.Marshal(map[string]string{"error": "marshal failed"})
+	}
+	fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, string(b))
 }
 
 func normalizeCategory(c string) string {
-    switch c {
-    case "movie", "tv", "music", "game", "software", "book", "anime", "other":
-        return c
-    default:
-        return "all"
-    }
+	switch c {
+	case "movie", "tv", "music", "game", "software", "book", "anime", "other":
+		return c
+	default:
+		return "all"
+	}
 }
 
 func normalizeSort(s string) string {
-    switch s {
-    case "seeders", "publishedAt", "sizeDesc", "sizeAsc":
-        return s
-    default:
-        return "relevance"
-    }
+	switch s {
+	case "seeders", "publishedAt", "sizeDesc", "sizeAsc":
+		return s
+	default:
+		return "relevance"
+	}
 }
 
 // Avoid unused-import noise in Phase 2; indexer is referenced by the mock.

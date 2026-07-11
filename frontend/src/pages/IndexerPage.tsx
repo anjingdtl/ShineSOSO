@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../services/api';
-import type { DiscoveryCandidate, IndexerDefinition, IndexerTestResult, InstalledIndexer } from '../types';
+import type { IndexerDefinition, IndexerTestResult, InstalledIndexer, ProwlarrCandidate, ProwlarrStatus } from '../types';
 import { ImportDialog } from '../features/ImportDialog';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
@@ -31,17 +31,19 @@ export function IndexerPage(): JSX.Element {
     const [importOpen, setImportOpen] = useState(false);
     const [catalogQuery, setCatalogQuery] = useState('');
     const [quickAdding, setQuickAdding] = useState<string | null>(null);
-    const [webQuery, setWebQuery] = useState('');
-    const [webResults, setWebResults] = useState<DiscoveryCandidate[]>([]);
-    const [webSearching, setWebSearching] = useState(false);
-    const [probing, setProbing] = useState<string | null>(null);
+    const [engineStatus, setEngineStatus] = useState<ProwlarrStatus>({ state: 'starting', message: '正在检查内置引擎…' });
+    const [engineQuery, setEngineQuery] = useState('');
+    const [engineResults, setEngineResults] = useState<ProwlarrCandidate[]>([]);
+    const [engineSearching, setEngineSearching] = useState(false);
+    const [engineAdding, setEngineAdding] = useState<string | null>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, cat] = await Promise.all([api.listIndexers(), api.listCatalog()]);
+            const [list, cat, engine] = await Promise.all([api.listIndexers(), api.listCatalog(), api.getProwlarrStatus()]);
             setInstalled(list.items);
             setCatalog(cat.items);
+            setEngineStatus(engine);
         } catch (err) {
             setNotice({ kind: 'error', text: err instanceof Error ? err.message : String(err) });
         } finally {
@@ -84,8 +86,8 @@ export function IndexerPage(): JSX.Element {
         catch (err) { setNotice({ kind: 'error', text: `添加失败：${err instanceof Error ? err.message : String(err)}` }); }
         finally { setQuickAdding(null); }
     }, [refresh]);
-    const onWebSearch = useCallback(async (e: React.FormEvent) => { e.preventDefault(); setWebSearching(true); setNotice(null); try { const r = await api.discoverIndexers(webQuery); setWebResults(r.items); } catch (err) { setNotice({kind:'error',text:err instanceof Error?err.message:String(err)}); } finally { setWebSearching(false); } }, [webQuery]);
-    const onProbe = useCallback(async (candidate: DiscoveryCandidate) => { setProbing(candidate.url); setNotice(null); try { const p = await api.probeIndexer(candidate.url); await api.createIndexer({definitionId:'example-torznab',name:candidate.name || '发现的 Torznab 索引器',baseUrl:p.baseUrl,testBeforeEnable:true}); setNotice({kind:'success',text:`已验证并添加「${candidate.name}」`}); await refresh(); } catch (err) { setNotice({kind:'error',text:`未能自动接入：${err instanceof Error?err.message:String(err)}`}); } finally { setProbing(null); } }, [refresh]);
+    const onEngineSearch = useCallback(async (e: React.FormEvent) => { e.preventDefault(); setEngineSearching(true); setNotice(null); try { const r = await api.discoverProwlarrIndexers(engineQuery); setEngineResults(r.items); } catch (err) { setNotice({kind:'error',text:err instanceof Error?err.message:String(err)}); } finally { setEngineSearching(false); } }, [engineQuery]);
+    const onEngineAdd = useCallback(async (candidate: ProwlarrCandidate) => { setEngineAdding(candidate.id); setNotice(null); try { await api.addProwlarrIndexer(candidate.id); setNotice({kind:'success',text:`Prowlarr 已测试并添加「${candidate.name}」，现在可以直接搜索资源。`}); } catch (err) { setNotice({kind:'error',text:`未能添加：${err instanceof Error?err.message:String(err)}`}); } finally { setEngineAdding(null); } }, []);
 
     const discoverable = catalog.filter((d) => !d.id.startsWith('demo-') && !d.id.startsWith('example-'))
         .filter((d) => `${d.name} ${d.description ?? ''} ${d.language ?? ''} ${d.protocol}`.toLowerCase().includes(catalogQuery.trim().toLowerCase()));
@@ -143,15 +145,16 @@ export function IndexerPage(): JSX.Element {
             )}
 
             <section className="card discovery-center">
-                <div><h2>发现中心</h2><p className="form-help">目录已随软件安装在本机；搜索、添加和测试均不依赖 Prowlarr 或云端服务。</p></div>
+                <div><h2>本地公开资料源</h2><p className="form-help">适合公开数字馆藏。电影、BT/Usenet 等索引器请使用下面的内置 Prowlarr 引擎。</p></div>
                 <input className="discovery-search" value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} placeholder="搜索名称、语言或协议" aria-label="搜索本地索引器目录" />
                 <ul className="discovery-results">{discoverable.map((definition) => <li key={definition.id}><div><strong>{definition.name}</strong><span>{[definition.description, definition.language, definition.protocol].filter(Boolean).join(' · ')}</span></div><button type="button" className="btn btn-primary" disabled={quickAdding !== null} onClick={() => void onQuickAdd(definition)}>{quickAdding === definition.id ? '测试中…' : '一键添加'}</button></li>)}</ul>
                 {!loading && discoverable.length === 0 && <p className="empty-state">没有匹配项。你仍可使用下方手动添加或导入 YAML。</p>}
             </section>
             <section className="card discovery-center">
-                <div><h2>联网发现索引器</h2><p className="form-help">关键词会发送到公开搜索服务。仅通过 Torznab 协议探测与测试的候选才会添加。</p></div>
-                <form className="web-discovery-form" onSubmit={onWebSearch}><input className="discovery-search" value={webQuery} onChange={(e) => setWebQuery(e.target.value)} placeholder="例如：公开电影、中文电影" required minLength={2}/><button className="btn" disabled={webSearching}>{webSearching?'搜索中…':'搜索全网候选'}</button></form>
-                {webResults.length > 0 && <ul className="discovery-results">{webResults.map((candidate)=><li key={candidate.url}><div><strong>{candidate.name || candidate.url}</strong><span>{[candidate.source,candidate.type,candidate.language,candidate.protocol].filter(Boolean).join(' · ')}</span><span>{candidate.summary || candidate.url}</span></div><button type="button" className="btn" disabled={probing!==null} onClick={() => void onProbe(candidate)}>{probing===candidate.url?'探测中…':'探测并添加'}</button></li>)}</ul>}
+                <div><h2>电影与资源索引器（内置 Prowlarr）</h2><p className="form-help">{engineStatus.state === 'ready' ? `引擎已就绪${engineStatus.version ? `（${engineStatus.version}）` : ''}；只显示无需账号即可一键测试的公开索引器。` : engineStatus.message ?? '引擎正在启动，请稍候。'}</p></div>
+                <form className="web-discovery-form" onSubmit={onEngineSearch}><input className="discovery-search" value={engineQuery} onChange={(e) => setEngineQuery(e.target.value)} placeholder="输入名称，例如：YTS、Nyaa、1337x" /><button className="btn" disabled={engineSearching || engineStatus.state !== 'ready'}>{engineSearching?'搜索中…':'搜索 Prowlarr 索引器'}</button></form>
+                {engineStatus.state === 'starting' && <p className="form-help">首次启动需要初始化索引器定义，约需数十秒；请稍候后刷新或再次搜索。</p>}
+                {engineResults.length > 0 && <ul className="discovery-results">{engineResults.map((candidate) => <li key={candidate.id}><div><strong>{candidate.name}</strong><span>{[candidate.privacy, candidate.protocol].filter(Boolean).join(' · ')}</span>{candidate.reason && <span>{candidate.reason}</span>}</div>{candidate.canQuickAdd ? <button type="button" className="btn btn-primary" disabled={engineAdding !== null} onClick={() => void onEngineAdd(candidate)}>{engineAdding === candidate.id ? 'Prowlarr 测试中…' : '一键测试并添加'}</button> : <span className="badge badge-empty">需要配置</span>}</li>)}</ul>}
             </section>
 
             <details className="card manual-add">

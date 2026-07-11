@@ -102,7 +102,7 @@ func torznabDefinition() model.IndexerDefinition {
 func TestScenario_Orchestrator_MixedResults(t *testing.T) {
 	html1 := `<html><body><table>
 <tr class="row">
-  <td class="title"><a>result from indexer1</a></td>
+  <td class="title"><a>result x from indexer1</a></td>
   <td class="size">1 GB</td>
   <td class="seeders">1</td>
   <td class="magnet">magnet:?xt=urn:btih:1111111111111111111111111111111111111111</td>
