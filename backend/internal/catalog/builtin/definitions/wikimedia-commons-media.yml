@@ -1,0 +1,47 @@
+schema: 1
+id: wikimedia-commons-media
+name: Wikimedia Commons（公开图片与视频）
+version: 1.0.0
+description: 搜索自由授权的公开图片、视频与音频素材；无需账号。
+language: multi
+type: public
+protocol: declarative
+
+links:
+  - https://commons.wikimedia.org/
+
+categories:
+  movie:
+    - "video"
+  other:
+    - "media"
+
+search:
+  method: GET
+  path: /w/api.php
+  query:
+    action: query
+    generator: search
+    gsrsearch: "{{ .Query.Keyword }} file"
+    gsrnamespace: "6"
+    gsrlimit: "50"
+    prop: info
+    format: json
+    origin: "*"
+  headers:
+    Accept: application/json
+  timeoutSeconds: 15
+
+response:
+  format: json
+  fields:
+    row:
+      selector: query.pages[*]
+    title:
+      selector: title
+      value: string
+      required: true
+    detail_url:
+      selector: pageid
+      value: url_template
+      template: "https://commons.wikimedia.org/?curid={{ value }}"

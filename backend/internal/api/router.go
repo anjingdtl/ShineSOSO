@@ -18,6 +18,7 @@ type ServerDeps struct {
 	Indexer     *IndexerHandler
 	Import      *ImportHandler
 	Catalog     *CatalogUpdateHandler
+	Discovery   *DiscoveryHandler
 	Diagnostics *DiagnosticsHandler
 }
 
@@ -57,6 +58,10 @@ func NewRouter(deps ServerDeps) http.Handler {
 		if deps.Catalog != nil {
 			r.Post("/indexer-catalog/update", deps.Catalog.Update)
 			r.Get("/indexer-catalog/status", deps.Catalog.Status)
+		}
+		if deps.Discovery != nil {
+			r.Post("/indexer-discovery/search", deps.Discovery.Search)
+			r.Post("/indexer-discovery/probe", deps.Discovery.Probe)
 		}
 	})
 

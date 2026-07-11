@@ -391,6 +391,7 @@ a:hover {
     color: var(--text-muted);
     font-size: 12px;
 }
+.form-help { color: var(--text-muted); margin: -4px 0 0; }
 .form-row input,
 .form-row select {
     background: var(--bg);
@@ -399,6 +400,16 @@ a:hover {
     border-radius: var(--radius);
     padding: 8px 10px;
 }
+.discovery-center { display: grid; gap: 12px; margin-bottom: 16px; }
+.discovery-search { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 10px; font: inherit; }
+.discovery-results { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; max-height: 360px; overflow-y: auto; }
+.discovery-results li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.discovery-results li div { display: grid; gap: 3px; min-width: 0; }.discovery-results li span { color: var(--text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.web-discovery-form { display:flex; gap:8px; }.web-discovery-form .discovery-search { flex:1; }
+.manual-add { margin-bottom: 16px; }
+.manual-add summary { cursor: pointer; font-weight: 600; }
+.manual-add[open] summary { margin-bottom: 12px; }
+.manual-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .indexer-list {
     list-style: none;
     padding: 0;

@@ -16,6 +16,7 @@ package indexer
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -151,7 +152,7 @@ func (a *declarativeAdapter) buildJSONResult(row map[string]any, fields map[stri
 		if !ok || v == nil {
 			continue
 		}
-		applyJSONTyped(&res, name, f.Value, v)
+		applyJSONTyped(&res, name, f.Value, f.Template, v)
 	}
 	// Reconstruct a magnet from an extracted info hash when no
 	// magnet_url field was provided (mirrors the HTML pipeline's
@@ -182,7 +183,7 @@ func jsonLookup(root any, segs []jsonPathSeg) (any, bool) {
 
 // applyJSONTyped maps a typed JSON value into a SearchResult field by
 // the FieldDefinition.Value string. Falls back to "string" when unset.
-func applyJSONTyped(res *model.SearchResult, name, kind string, val any) {
+func applyJSONTyped(res *model.SearchResult, name, kind, template string, val any) {
 	switch kind {
 	case "int":
 		n, ok := jsonToInt64(val)
@@ -220,6 +221,19 @@ func applyJSONTyped(res *model.SearchResult, name, kind string, val any) {
 			return
 		}
 		res.MagnetURL = s
+	case "url_template":
+		if template == "" {
+			return
+		}
+		u := strings.ReplaceAll(template, "{{ value }}", url.QueryEscape(jsonScalarToString(val)))
+		switch name {
+		case "detail_url":
+			res.DetailURL = u
+		case "direct_url":
+			res.DirectURL = u
+		case "torrent_url":
+			res.TorrentURL = u
+		}
 	case "string", "":
 		s := jsonScalarToString(val)
 		switch name {

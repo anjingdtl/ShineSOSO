@@ -168,13 +168,13 @@ func (r *IndexerRepo) SetStatus(id, status string, checkedAt *time.Time, lastErr
 
 // HealthEvent is one row in indexer_health_events.
 type HealthEvent struct {
-	ID          int64
-	IndexerID   string
-	Status      string
-	DurationMs  int64
-	ErrorCode   string
+	ID           int64
+	IndexerID    string
+	Status       string
+	DurationMs   int64
+	ErrorCode    string
 	ErrorMessage string
-	CreatedAt   time.Time
+	CreatedAt    time.Time
 }
 
 // RecordHealthEvent appends a row to indexer_health_events.
@@ -273,12 +273,12 @@ func (r *IndexerRepo) DiagnosticsSummary() ([]DiagnosticsRow, error) {
 
 func scanIndexer(row *sql.Row) (model.InstalledIndexer, error) {
 	var (
-		idx             model.InstalledIndexer
-		enabled         int
-		lastChecked     sql.NullString
-		lastSuccess     sql.NullString
-		created, upda   string
-		lastErr         sql.NullString
+		idx           model.InstalledIndexer
+		enabled       int
+		lastChecked   sql.NullString
+		lastSuccess   sql.NullString
+		created, upda string
+		lastErr       sql.NullString
 	)
 	err := row.Scan(
 		&idx.ID, &idx.DefinitionID, &idx.Name, &idx.BaseURL, &enabled, &idx.DefinitionVersion,

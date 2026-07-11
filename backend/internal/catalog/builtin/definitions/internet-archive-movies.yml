@@ -1,0 +1,44 @@
+schema: 1
+id: internet-archive-movies
+name: Internet Archive（公开电影与视频）
+version: 1.0.0
+description: 可搜索 Internet Archive 的公开电影与视频馆藏；无需账号。
+language: multi
+type: public
+protocol: declarative
+
+links:
+  - https://archive.org/
+
+categories:
+  movie:
+    - "movies"
+
+search:
+  method: GET
+  path: /advancedsearch.php
+  query:
+    q: "mediatype:movies {{ .Query.Keyword }}"
+    fl[]: identifier,title,downloads
+    rows: "50"
+    output: json
+  headers:
+    Accept: application/json
+  timeoutSeconds: 15
+
+response:
+  format: json
+  fields:
+    row:
+      selector: response.docs[*]
+    title:
+      selector: title
+      value: string
+      required: true
+    downloads:
+      selector: downloads
+      value: int
+    detail_url:
+      selector: identifier
+      value: url_template
+      template: "https://archive.org/details/{{ value }}"

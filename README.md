@@ -13,7 +13,7 @@
 - 🔍 **多源并发搜索**：N 个已启用公开索引器并发请求，带 SSE 实时进度
 - 🧹 **自动去重**：强去重（InfoHash / URL）+ 弱去重（标题 + 大小 ±2%）
 - 📊 **统一结果字段**：标题、大小、发布、做种数、来源数统统对齐
-- 🗂️ **内置目录 + 一键添加**：内置三个示例公开索引器，三次点击即可开始搜索
+- 🧭 **本地发现中心 + 一键添加**：内置可搜索索引器目录；无需 Prowlarr、账号或云服务
 - 🛠️ **YAML 自定义**：通过 YAML 定义文件扩展新的公开索引器，**无需修改主程序**
 - 🔐 **默认安全**：仅监听回环地址、SSRF 防护、响应大小限制、日志脱敏
 - 🖥️ **单文件运行**：编译后是单个 `easysearch.exe`，不需要 Node / Go / Python
@@ -59,11 +59,11 @@ cd ShineSOSO
 
 ### 3. 添加第一个索引器
 
-进入 **索引器** 页 → **已添加** 标签 → 点 **+ 添加公开索引器** → 选 `demo-alpha` → 点 **添加**。
+进入 **索引器** 页，在 **发现中心** 搜索内置目录并点击 **一键添加**。首个可用内置源是 Internet Archive（公开数字馆藏）；软件会在本机测试索引器，通过后自动启用。
 
 完成后到 **搜索** 页输入任意关键词即可。
 
-> 想跳过内置示例？参见 [`docs/USER_GUIDE.md`](./docs/USER_GUIDE.md) 了解 YAML 导入、Torznab 配置和诊断导出。
+> 没有匹配的内置定义时，可参见 [`docs/USER_GUIDE.md`](./docs/USER_GUIDE.md) 了解 YAML / Torznab 配置和诊断导出。
 
 ## 🛠️ 开发
 
@@ -135,6 +135,7 @@ npm run e2e          # 端到端（Playwright）
 | `scripts/phase5-smoke.ps1` | Phase 5 冒烟 |
 | `scripts/phase6-smoke.ps1` | Phase 6 冒烟（Torznab + 目录更新） |
 | `scripts/smoke.ps1` | **全链路冒烟**（启动 → 添加 → 搜索 → 诊断 → 退出） |
+| `scripts/package-portable.ps1` | 一键生成绿色免安装 ZIP；用户解压后双击 `启动 EasySearch.vbs` 即可运行 |
 
 ### 环境变量
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,7 @@ func (h *IndexerHandler) List(w http.ResponseWriter, r *http.Request) {
 type createIndexerRequest struct {
 	DefinitionID string `json:"definitionId"`
 	BaseURL      string `json:"baseUrl"`
+	Name         string `json:"name,omitempty"`
 	Enabled      *bool  `json:"enabled,omitempty"`
 	TestBefore   *bool  `json:"testBeforeEnable,omitempty"`
 }
@@ -99,10 +101,14 @@ func (h *IndexerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now().UTC()
+	name := def.Name
+	if strings.TrimSpace(req.Name) != "" {
+		name = strings.TrimSpace(req.Name)
+	}
 	installed := model.InstalledIndexer{
 		ID:                uuid.NewString(),
 		DefinitionID:      def.ID,
-		Name:              def.Name,
+		Name:              name,
 		Enabled:           enabled,
 		BaseURL:           req.BaseURL,
 		DefinitionVersion: def.Version,

@@ -1,0 +1,50 @@
+schema: 1
+id: internet-archive
+name: Internet Archive（公开数字馆藏）
+version: 1.0.0
+description: 公开可访问的书籍、音频、视频与软件馆藏；无需账号。
+language: multi
+type: public
+protocol: declarative
+
+links:
+  - https://archive.org/
+
+categories:
+  book:
+    - "texts"
+  music:
+    - "audio"
+  movie:
+    - "movies"
+  software:
+    - "software"
+
+search:
+  method: GET
+  path: /advancedsearch.php
+  query:
+    q: "{{ .Query.Keyword }}"
+    fl[]: identifier,title,downloads
+    rows: "50"
+    output: json
+  headers:
+    Accept: application/json
+  timeoutSeconds: 15
+
+response:
+  format: json
+  fields:
+    row:
+      selector: response.docs[*]
+    title:
+      selector: title
+      value: string
+      required: true
+    downloads:
+      selector: downloads
+      value: int
+    detail_url:
+      selector: identifier
+      value: url_template
+      template: "https://archive.org/details/{{ value }}"

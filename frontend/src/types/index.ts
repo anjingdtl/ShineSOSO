@@ -48,7 +48,10 @@ export interface IndexerDefinition {
     language?: string;
     type: string;
     protocol: string;
+    links?: string[];
+    categories?: Record<string, string[]>;
 }
+export interface DiscoveryCandidate { name: string; url: string; summary?: string }
 
 export interface IndexerTestResult {
     ok: boolean;

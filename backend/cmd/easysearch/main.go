@@ -130,6 +130,7 @@ func main() {
 			Logger:  logger.Logger,
 			Updater: updater,
 		},
+		Discovery: &api.DiscoveryHandler{Logger: logger.Logger, IndexerClient: httpClient},
 		Diagnostics: &api.DiagnosticsHandler{
 			StartTime: startTime,
 			Version:   version,

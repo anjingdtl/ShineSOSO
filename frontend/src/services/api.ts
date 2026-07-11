@@ -3,7 +3,7 @@
 // in dev the Vite proxy forwards /api to the Go backend on the port
 // declared in $EASYSEARCH_DATA_DIR/.port.
 
-import type { ImportResponse, IndexerDefinition, IndexerTestResult, InstalledIndexer, SystemStatus } from '../types';
+import type { DiscoveryCandidate, ImportResponse, IndexerDefinition, IndexerTestResult, InstalledIndexer, SystemStatus } from '../types';
 
 export class ApiError extends Error {
     constructor(
@@ -47,6 +47,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface CreateIndexerRequest {
     definitionId: string;
     baseUrl: string;
+    name?: string;
     enabled?: boolean;
     testBeforeEnable?: boolean;
 }
@@ -95,7 +96,8 @@ export const api = {
     listCatalog(): Promise<{ items: IndexerDefinition[] }> {
         return request<{ items: IndexerDefinition[] }>('/api/v1/indexer-catalog');
     },
-
+    discoverIndexers(query: string): Promise<{ items: DiscoveryCandidate[] }> { return request('/api/v1/indexer-discovery/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query})}); },
+    probeIndexer(url: string): Promise<{ baseUrl: string }> { return request('/api/v1/indexer-discovery/probe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}); },
     importDefinition(yaml: string, filename: string, withTest = true): Promise<ImportResponse> {
         return request<ImportResponse>('/api/v1/indexer-catalog/import', {
             method: 'POST',

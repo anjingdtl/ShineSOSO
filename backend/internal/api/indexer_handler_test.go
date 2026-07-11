@@ -141,6 +141,21 @@ func TestIndexerHandlerCreateGet(t *testing.T) {
 	_ = repo
 }
 
+func TestIndexerHandlerCreateUsesOptionalCustomName(t *testing.T) {
+	h, _, _ := newTestHandler(t)
+	rr := do(t, h.Create, "POST", "/api/v1/indexers", map[string]any{
+		"definitionId": "demo-alpha", "baseUrl": "https://example.com", "name": "我的自定义接口",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var created model.InstalledIndexer
+	_ = json.NewDecoder(rr.Body).Decode(&created)
+	if created.Name != "我的自定义接口" {
+		t.Fatalf("name=%q", created.Name)
+	}
+}
+
 func TestIndexerHandlerRejectsUnsafeURL(t *testing.T) {
 	h, _, _ := newTestHandler(t)
 	rr := do(t, h.Create, "POST", "/api/v1/indexers", map[string]any{

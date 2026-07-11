@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "version": "2026.07.1",
-  "generatedAt": "2026-07-09T13:03:53Z",
+  "version": "2026.07.3",
+  "generatedAt": "2026-07-11T11:50:24Z",
   "definitions": [
     {
       "id": "example-public-html",
@@ -14,6 +14,24 @@
       "version": "1.0.0",
       "file": "definitions/example-torznab.yml",
       "sha256": "919334e7a99181092d20657ba078bef02fad5d751fa978a9730a76b8ea417e46"
+    },
+    {
+      "id": "internet-archive-movies",
+      "version": "1.0.0",
+      "file": "definitions/internet-archive-movies.yml",
+      "sha256": "74e762fd108b56d9a44456da2ee84e3b5d9e063adf8a8bc5259cf0934876ce8d"
+    },
+    {
+      "id": "internet-archive",
+      "version": "1.0.0",
+      "file": "definitions/internet-archive.yml",
+      "sha256": "f41d57a239251fb177770f642ddb2b88c7f8f67b060f355a5149ae8a746fdc17"
+    },
+    {
+      "id": "wikimedia-commons-media",
+      "version": "1.0.0",
+      "file": "definitions/wikimedia-commons-media.yml",
+      "sha256": "266182dbce23e4b9b8f67d8e59b7e52137c6e35e28d6020842296257104b6764"
     }
   ]
 }

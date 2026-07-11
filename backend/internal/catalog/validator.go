@@ -54,16 +54,16 @@ func (e *ValidationError) Is(target error) bool { return target == ErrValidation
 
 // Error codes (UI maps these to localized strings).
 const (
-	CodeSchemaUnsupported  = "SCHEMA_UNSUPPORTED"
-	CodeIDInvalid          = "ID_INVALID"
-	CodeNameMissing        = "NAME_MISSING"
-	CodeLinksMissing       = "LINKS_MISSING"
-	CodeLinkNotHTTPS       = "LINK_NOT_HTTPS"
-	CodeLinkUnsafe         = "LINK_UNSAFE"
-	CodeTypeInvalid        = "TYPE_INVALID"
+	CodeSchemaUnsupported   = "SCHEMA_UNSUPPORTED"
+	CodeIDInvalid           = "ID_INVALID"
+	CodeNameMissing         = "NAME_MISSING"
+	CodeLinksMissing        = "LINKS_MISSING"
+	CodeLinkNotHTTPS        = "LINK_NOT_HTTPS"
+	CodeLinkUnsafe          = "LINK_UNSAFE"
+	CodeTypeInvalid         = "TYPE_INVALID"
 	CodeProtocolUnsupported = "PROTOCOL_UNSUPPORTED"
-	CodeSelectorForbidden  = "SELECTOR_FORBIDDEN"
-	CodeTemplateForbidden  = "TEMPLATE_FORBIDDEN"
+	CodeSelectorForbidden   = "SELECTOR_FORBIDDEN"
+	CodeTemplateForbidden   = "TEMPLATE_FORBIDDEN"
 )
 
 // ErrValidation is the sentinel for all validator failures.
@@ -124,7 +124,7 @@ func Validate(def model.IndexerDefinition) error {
 		}
 	}
 	for name, tmpl := range AllTemplates(def) {
-		if !isAllowedTemplate(tmpl) {
+		if !isAllowedTemplate(tmpl) && !isAllowedResultTemplate(tmpl) {
 			return &ValidationError{
 				Code:    CodeTemplateForbidden,
 				Message: fmt.Sprintf("field %q template %q uses a forbidden variable", name, tmpl),
@@ -149,6 +149,10 @@ func AllSelectors(def model.IndexerDefinition) map[string]string {
 	return out
 }
 
+func isAllowedResultTemplate(tmpl string) bool {
+	return strings.Count(tmpl, "{{ value }}") == 1 && strings.Count(tmpl, "{{") == 1 && !forbidsAny(tmpl, selectorForbidden)
+}
+
 // AllTemplates returns every template string (search.query values +
 // search.body) keyed by where it came from.
 func AllTemplates(def model.IndexerDefinition) map[string]string {
@@ -158,6 +162,11 @@ func AllTemplates(def model.IndexerDefinition) map[string]string {
 	}
 	if def.Search.Body != "" {
 		out["body"] = def.Search.Body
+	}
+	for name, f := range def.Result.Fields {
+		if f.Template != "" {
+			out["field."+name] = f.Template
+		}
 	}
 	return out
 }

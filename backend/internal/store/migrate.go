@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"sort"
 )
 
 // migrate applies every migration in order. Idempotent: rerunning is a
@@ -16,7 +17,13 @@ func (s *Store) migrate() error {
 	)`); err != nil {
 		return fmt.Errorf("create schema_migrations: %w", err)
 	}
-	for v, sql := range migrations {
+	versions := make([]int, 0, len(migrations))
+	for v := range migrations {
+		versions = append(versions, v)
+	}
+	sort.Ints(versions)
+	for _, v := range versions {
+		sql := migrations[v]
 		var seen int
 		if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations WHERE version = ?`, v).Scan(&seen); err != nil {
 			return fmt.Errorf("check migration %d: %w", v, err)

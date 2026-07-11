@@ -40,12 +40,13 @@ func TestDeclarativeJSON_Search(t *testing.T) {
 		Result: model.ResultDefinition{
 			Format: "json",
 			Fields: map[string]model.FieldDefinition{
-				"row":      {Selector: "results[*]"},
-				"title":    {Selector: "title", Value: "string"},
-				"size":     {Selector: "size", Value: "size"},
-				"seeders":  {Selector: "seeders", Value: "int"},
-				"infohash": {Selector: "infohash", Value: "infohash"},
-				"magnet":   {Selector: "download", Value: "magnet_url"},
+				"row":        {Selector: "results[*]"},
+				"title":      {Selector: "title", Value: "string"},
+				"size":       {Selector: "size", Value: "size"},
+				"seeders":    {Selector: "seeders", Value: "int"},
+				"infohash":   {Selector: "infohash", Value: "infohash"},
+				"magnet":     {Selector: "download", Value: "magnet_url"},
+				"detail_url": {Selector: "title", Value: "url_template", Template: "https://example.org/item/{{ value }}"},
 			},
 		},
 	}
@@ -80,5 +81,8 @@ func TestDeclarativeJSON_Search(t *testing.T) {
 	}
 	if res[0].Title != "Alpha" {
 		t.Fatalf("title mismatch: %q", res[0].Title)
+	}
+	if res[0].DetailURL != "https://example.org/item/Alpha" {
+		t.Fatalf("detail URL mismatch: %q", res[0].DetailURL)
 	}
 }
