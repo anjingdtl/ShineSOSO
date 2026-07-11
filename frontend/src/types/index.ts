@@ -51,7 +51,7 @@ export interface IndexerDefinition {
     links?: string[];
     categories?: Record<string, string[]>;
 }
-export interface DiscoveryCandidate { name: string; url: string; summary?: string }
+export interface DiscoveryCandidate { name: string; url: string; summary?: string; source?: string; type?: string; language?: string; protocol?: string; score?: number }
 
 export interface IndexerTestResult {
     ok: boolean;

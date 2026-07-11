@@ -151,7 +151,7 @@ export function IndexerPage(): JSX.Element {
             <section className="card discovery-center">
                 <div><h2>联网发现索引器</h2><p className="form-help">关键词会发送到公开搜索服务。仅通过 Torznab 协议探测与测试的候选才会添加。</p></div>
                 <form className="web-discovery-form" onSubmit={onWebSearch}><input className="discovery-search" value={webQuery} onChange={(e) => setWebQuery(e.target.value)} placeholder="例如：公开电影、中文电影" required minLength={2}/><button className="btn" disabled={webSearching}>{webSearching?'搜索中…':'搜索全网候选'}</button></form>
-                {webResults.length > 0 && <ul className="discovery-results">{webResults.map((candidate)=><li key={candidate.url}><div><strong>{candidate.name || candidate.url}</strong><span>{candidate.summary || candidate.url}</span></div><button type="button" className="btn" disabled={probing!==null} onClick={() => void onProbe(candidate)}>{probing===candidate.url?'探测中…':'探测并添加'}</button></li>)}</ul>}
+                {webResults.length > 0 && <ul className="discovery-results">{webResults.map((candidate)=><li key={candidate.url}><div><strong>{candidate.name || candidate.url}</strong><span>{[candidate.source,candidate.type,candidate.language,candidate.protocol].filter(Boolean).join(' · ')}</span><span>{candidate.summary || candidate.url}</span></div><button type="button" className="btn" disabled={probing!==null} onClick={() => void onProbe(candidate)}>{probing===candidate.url?'探测中…':'探测并添加'}</button></li>)}</ul>}
             </section>
 
             <details className="card manual-add">
