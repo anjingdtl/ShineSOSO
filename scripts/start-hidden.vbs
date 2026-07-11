@@ -25,7 +25,7 @@ If Not fso.FileExists(exePath) Then
     WScript.Quit 1
 End If
 
-If Not fso.FolderExists(dataDir) Then fso.CreateFolder dataDir
+EnsureFolder dataDir
 
 On Error Resume Next
 shell.Run """" + exePath + """", WIN_HIDDEN, NON_BLOCK
@@ -44,13 +44,25 @@ Call Log("started " & exePath)
 ' ---- helpers ----
 Sub Log(line)
     On Error Resume Next
-    Dim parent, stream
-    parent = fso.GetParentFolderName(logPath)
-    If Not fso.FolderExists(parent) Then fso.CreateFolder parent
+    Dim stream
+    EnsureFolder fso.GetParentFolderName(logPath)
     Set stream = fso.OpenTextFile(logPath, 8, True) ' ForAppending
     If Err.Number = 0 Then
         stream.WriteLine FormatDateTime(Now, vbGeneralDate) & "  " & line
         stream.Close
     End If
+    On Error Goto 0
+End Sub
+
+' Create a directory and any missing parents. FileSystemObject.CreateFolder
+' only creates one level, so a first launch would otherwise fail when
+' %APPDATA%\EasySearch does not yet exist.
+Sub EnsureFolder(path)
+    On Error Resume Next
+    If fso.FolderExists(path) Then Exit Sub
+    Dim parent
+    parent = fso.GetParentFolderName(path)
+    If parent <> "" And Not fso.FolderExists(parent) Then EnsureFolder parent
+    If Not fso.FolderExists(path) Then fso.CreateFolder path
     On Error Goto 0
 End Sub

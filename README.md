@@ -49,7 +49,7 @@ cd ShineSOSO
 
 ### 2. 启动
 
-双击 `easysearch.exe`，或在命令行里执行它。程序会：
+推荐双击仓库根目录的 `启动 EasySearch.vbs`，它会在后台启动程序且不显示终端窗口。也可以双击或在命令行执行 `dist\easysearch.exe`。程序会：
 
 1. 绑定 `127.0.0.1` 上的随机端口（写入 `data\.port`）
 2. 自动打开默认浏览器到 WebUI
@@ -127,6 +127,8 @@ npm run e2e          # 端到端（Playwright）
 | 脚本 | 用途 |
 |---|---|
 | `scripts/build.ps1` | Windows 一键构建（前端 + Go → `dist\easysearch.exe`） |
+| `启动 EasySearch.vbs` | 面向最终用户的一键后台启动入口 |
+| `scripts/launcher-smoke.ps1` | 验证一键启动、端口文件与 HTTP 服务可用 |
 | `scripts/dev.ps1` | 开发模式启动后端（让 `npm run dev` 自动代理） |
 | `scripts/dev.sh` | 同上，Bash 版本 |
 | `scripts/phase4-smoke.ps1` | Phase 4 冒烟（已纳入 `smoke.ps1` 全链路；保留作历史单步用例） |

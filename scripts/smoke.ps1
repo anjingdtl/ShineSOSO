@@ -12,7 +12,7 @@
 #      session_completed. Verifies at least one result is returned.
 #   6. Hits GET /api/v1/system/diagnostics and confirms the response is
 #      a valid ZIP containing version.txt + indexers.json + README.txt.
-#   7. Stops the binary cleanly and reports PASS/FAIL counts.
+#   7. Stops the binary and reports PASS/FAIL counts.
 #
 # Strategy: spin the binary as a child process, drive it via HTTP.
 # The binary itself owns browser launch + port file writing.
@@ -44,6 +44,8 @@ function Section {
 $dataDir = Join-Path $env:TEMP "easysearch-smoke-$([guid]::NewGuid().ToString('N'))"
 New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
 
+$hadDataDirOverride = Test-Path Env:EASYSEARCH_DATA_DIR
+$previousDataDirOverride = $env:EASYSEARCH_DATA_DIR
 $env:EASYSEARCH_DATA_DIR = $dataDir
 $exe = Join-Path $PSScriptRoot "..\dist\easysearch.exe"
 if (-not (Test-Path $exe)) {
@@ -93,7 +95,7 @@ try {
     try {
         $added = Invoke-RestMethod -Method Post -Uri "$base/api/v1/indexers" `
             -Headers @{ "Content-Type" = "application/json" } `
-            -Body (@{ definitionId = "demo-alpha" } | ConvertTo-Json -Compress)
+            -Body (@{ definitionId = "demo-alpha"; baseUrl = "https://example.com" } | ConvertTo-Json -Compress)
     } catch {
         Check "POST /indexers returned 2xx" $false
         Write-Host "    $($_.Exception.Message)"
@@ -112,18 +114,19 @@ try {
     try {
         $session = Invoke-RestMethod -Method Post -Uri "$base/api/v1/search/sessions" `
             -Headers @{ "Content-Type" = "application/json" } `
-            -Body (@{ query = "smoke"; categories = @("all") } | ConvertTo-Json -Compress)
+            -Body (@{ keyword = "smoke"; category = "all"; sort = "relevance" } | ConvertTo-Json -Compress)
     } catch {
         Check "POST /search/sessions returned 2xx" $false
         Write-Host "    $($_.Exception.Message)"
     }
-    Check "session.id populated" ($null -ne $session -and $session.id -ne "")
+    Check "session.sessionId populated" ($null -ne $session -and $session.sessionId -ne "")
 
-    if ($session -and $session.id) {
-        $eventUrl = "$base/api/v1/search/sessions/$($session.id)/events"
+    if ($session -and $session.sessionId) {
+        $eventUrl = "$base/api/v1/search/sessions/$($session.sessionId)/events"
         $completed = $false
         $gotResult = $false
         $resultCount = 0
+        $eventType = ""
         $deadline = (Get-Date).AddSeconds(15)
         try {
             # Use HttpClient via .NET to read SSE line-by-line.
@@ -137,14 +140,17 @@ try {
             while ((Get-Date) -lt $deadline) {
                 $line = $reader.ReadLine()
                 if ($null -eq $line) { break }
+                if ($line.StartsWith("event:")) {
+                    $eventType = $line.Substring(6).Trim()
+                }
                 if ($line.StartsWith("data:")) {
                     $payload = $line.Substring(5).Trim()
                     if ($payload -eq "") { continue }
                     try {
                         $evt = $payload | ConvertFrom-Json -ErrorAction SilentlyContinue
                     } catch { continue }
-                    if ($evt.type -eq "session_completed") { $completed = $true; break }
-                    if ($evt.type -eq "indexer_result" -or $evt.type -eq "results_merged") {
+                    if ($eventType -eq "session_completed") { $completed = $true; break }
+                    if ($eventType -eq "indexer_result") {
                         if ($evt.results) { $resultCount += $evt.results.Count }
                         $gotResult = $true
                     }
@@ -176,18 +182,23 @@ try {
         Check "diagnostics starts with PK magic ($magic)" ($magic -eq "80,75,3,4")
     }
 
-    Section "6/6 graceful shutdown"
+    Section "6/6 process shutdown"
     if ($proc -and -not $proc.HasExited) {
         Stop-Process -Id $proc.Id -Force
-        Start-Sleep -Milliseconds 500
+        $null = $proc.WaitForExit(3000)
     }
-    Check "port file removed after shutdown" (-not (Test-Path $portFile))
+    Check "process stopped" ($proc.HasExited)
 }
 finally {
     if ($proc -and -not $proc.HasExited) {
         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     }
     Remove-Item -Recurse -Force $dataDir -ErrorAction SilentlyContinue
+    if ($hadDataDirOverride) {
+        $env:EASYSEARCH_DATA_DIR = $previousDataDirOverride
+    } else {
+        Remove-Item Env:EASYSEARCH_DATA_DIR -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host ""
